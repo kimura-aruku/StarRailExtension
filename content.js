@@ -49,6 +49,8 @@ window.onload = () => {
     let characterInfoElementObserver;
     // カスタムサブステータス押下の監視オブジェクト
     let bodyElementObserver;
+    // 簡略モードの監視オブジェクト
+    let liteModeElementObserver;
 
     // 汎用的な要素待機関数
     function waitForElement(selector, validate = (el) => !!el, 
@@ -113,11 +115,29 @@ window.onload = () => {
             ){
                 const oldClassString = mutation.oldValue || '';
                 const oldClassList = oldClassString.split(' ').filter(Boolean);
+                const className = 'van-overflow-hidden';
                 // カスタムサブステータスを閉じたとき（=hiddenがなくなったとき）
-                if(oldClassList.includes('van-overflow-hidden') 
-                    && !mutation.target.classList.contains('van-overflow-hidden')
+                if(oldClassList.includes(className) 
+                    && !mutation.target.classList.contains(className)
                 ){
                     console.log('カスタムサブステータス画面が閉じられたので再描画');
+                    reDraw();
+                }
+            }
+            // 簡略モード解除
+            else if(observer === liteModeElementObserver 
+                && mutation.type === 'attributes' 
+                && mutation.attributeName  === 'class'
+            ){
+                const oldClassString = mutation.oldValue || '';
+                const oldClassList = oldClassString.split(' ').filter(Boolean);
+                const className = 'pc-role-lite';
+                // カスタムサブステータスを閉じたとき（=liteがなくなったとき）
+                if(oldClassList.includes(className) 
+                    && !mutation.target.classList.contains(className)
+                    && mutation.target.parentElement === characterInfoElement
+                ){
+                    console.log('簡略モードが終了したので再描画');
                     reDraw();
                 }
             }
@@ -153,15 +173,21 @@ window.onload = () => {
             attributeOldValue: true,
             attributeFilter: ['class']
         });
-
+        // 簡略モード
+        if(liteModeElementObserver){
+            liteModeElementObserver.disconnect();
+        }
+        liteModeElementObserver = new MutationObserver(callback);
+        liteModeElementObserver.observe(bodyElement, {
+            childList: false,
+            attributes: true,
+            subtree: true,
+            characterData: false,
+            characterDataOldValue: false,
+            attributeOldValue: true,
+            attributeFilter: ['class']
+        });
     }
-
-    // 簡略モード中
-    function isSimpleMode(){
-        // TODO: 簡略モードかどうか判断
-        return false;
-    }
-
 
     // スコアを計算し返す
     function calculateScore(relicElement){
