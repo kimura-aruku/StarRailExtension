@@ -28,10 +28,6 @@ window.onload = () => {
     /** @type {string} */
     let lastCharacterName;
 
-    // 前回のカスタムサブステータスの表示状態
-    /** @type {boolean} */
-    let hasDisplayed;
-
     // スタイルそのものを保持しているとバグったので辞書にキャッシュ
     // オリジナルの数値スタイルオブジェクト
     /** @type {{ [key: string]: string }} */
@@ -321,10 +317,13 @@ window.onload = () => {
                 parent.append(scoreDiv);
                 console.log(`要素を作った(${i})`);
             }
-            // 合計スコア
-            const totalScoreDiv = createScoreElement(scores);
-            const relicListElement = characterInfoElement.querySelector('.c-hrdrs-btm');
-            relicListElement.parentNode.append(totalScoreDiv);
+            // 聖遺物を1つも装備していない場合はスコアを描画しない
+            if(relicElements.length > 0){
+                // 合計スコア
+                const totalScoreDiv = createScoreElement(scores);
+                const relicListElement = characterInfoElement.querySelector('.c-hrdrs-btm');
+                relicListElement.parentNode.append(totalScoreDiv);
+            }
         }else{
             console.log('遺物リスト要素が取得できないので描画失敗');
         }
@@ -332,23 +331,6 @@ window.onload = () => {
 
     // 非同期処理を分離
     async function reDraw() {
-        // if(!isElementVisible(subPropListElement)){
-        //     if (relicListElementObserve) {
-        //         relicListElementObserve.disconnect();
-        //     }
-        //     const subPropsElement = await waitForElement('.sub-props');
-        //     subPropListElement = subPropsElement.querySelector('.prop-list');
-        //     relicListElementObserve = new MutationObserver(callback);
-        //     relicListElementObserve.observe(subPropListElement, config);
-        // }
-        // if(!isElementVisible(basicInfoElement)){
-        //     if (basicInfoElementObserve) {
-        //         basicInfoElementObserve.disconnect();
-        //     }
-        //     basicInfoElement = await waitForElement('.basic-info');
-        //     basicInfoElementObserve = new MutationObserver(callback);
-        //     basicInfoElementObserve.observe(basicInfoElement, config);
-        // }
         draw();
     }
 
