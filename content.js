@@ -11,6 +11,11 @@ window.onload = () => {
     // ボタンが押されたらポップアップをつかみ、ポップアップのdisplayを監視する
     // displayの監視でも描画
 
+    // 簡略モードに入るとバグる
+    // pc-role-detail なら通常、pc-role-lite なら簡略
+    // あと、簡略モードに入る->キャラ変更->簡略モードから戻る　に対応できていない
+    // 簡略モードから戻るとこも検知する
+
     // キャラ親要素
     /** @type {HTMLElement | null} */
     let characterInfoElement;
@@ -64,7 +69,7 @@ window.onload = () => {
 
     // 親要素取得
     function getCharacterInfoElements() {
-        return waitForElement('.pc-role-detail-num', 
+        return waitForElement('.pc-swiper-block-layout__content', 
             (el) => el.querySelector('.c-hrd-ri-name')?.textContent.trim().length > 0);
     }
 
@@ -129,18 +134,22 @@ window.onload = () => {
 
 
     // スコアを計算し返す
-    function calculateScore(index){
-        // 頭、手、胴体、脚、オーブ、縄
-        const relicElements = relicListElement.querySelectorAll('.c-hrdr-item');
-        // 上記のいずれか
-        const relicElement = relicElements[index];
-        // 聖遺物1つあたりが持つサブステータス要素すべて
+    function calculateScore(relicElement){
+        // メインステータスを除く、有効サブステータス
         const supPropNameAndValues = Array.from(relicElement.querySelectorAll('.c-hrdr-btm-item'))
-            .map(item => ({
-                name: item.querySelector('.c-hrdr-name').textContent.trim(), 
-                value: item.querySelector('.c-hrdr-num').textContent.trim()
-            }));
+            .slice(1)
+            .map(item => {
+                const numElement = item.querySelector('.c-hrdr-num');
+                return numElement?.getAttribute('highlight') === 'true'
+                    ? {
+                        name: item.querySelector('.c-hrdr-name').textContent.trim(),
+                        value: numElement.textContent.trim()
+                    }
+                    : null;
+            })
+            .filter(Boolean);
         let score = 0;
+        // 1件目はメインステータスなので無視
         supPropNameAndValues.forEach(supPropNameAndValue => {
             score += Number(getScore(supPropNameAndValue.name
                 , supPropNameAndValue.value));
@@ -188,10 +197,6 @@ window.onload = () => {
             subPropName += '割合';
         }
         subPropValue = subPropValue.replace(/[%+]/g, '').trim();
-        // スコアにならないステータス
-        if (!subPropNames.includes(subPropName)) {
-            return 0;
-        }
         switch (subPropName) {
             // 実数はスコア0
             case PROP_NAME.HP:
@@ -223,10 +228,12 @@ window.onload = () => {
     }
 
     // スコア要素作成
-    function createScoreElement(){
+    function createScoreElement(score){
         const newDiv = document.createElement('div');
         newDiv.classList.add(MY_CLASS);
-        newDiv.textContent = 'テスト';
+        newDiv.textContent = score.toFixed(2);
+        newDiv.style.textAlign = 'right';
+        newDiv.style.color = 'white';
         // スタイル設定
         return newDiv;
     }
@@ -238,13 +245,19 @@ window.onload = () => {
                 element.remove();
             });
             const relicElements = characterInfoElement.querySelectorAll('.c-hrdr-item');
+            let scores = 0;
             for(let i = 0; i < relicElements.length; i++){
                 const parent = relicElements[i];
+                const score = calculateScore(parent);
+                scores += score;
                 const titleElement = parent.querySelector('.c-hrdr-title');
-                const newDiv = createScoreElement();
-                parent.insertBefore(newDiv, titleElement);
+                const scoreDiv = createScoreElement(score);
+                parent.insertBefore(scoreDiv, titleElement);
                 console.log(`要素を作った(${i})`);
             }
+            const totalScoreDiv = createScoreElement(scores);
+            const relicListElement = characterInfoElement.querySelector('.c-hrdrs-btm');
+            relicListElement.parentNode.insertBefore(totalScoreDiv, relicListElement);
         }else{
             console.log('遺物リスト要素が取得できないので描画失敗');
         }
