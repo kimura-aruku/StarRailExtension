@@ -20,6 +20,10 @@ window.onload = () => {
     /** @type {HTMLElement | null} */
     let characterInfoElement;
 
+    // 画面全体要素
+    /** @type {HTMLElement | null} */
+    let bodyElement;
+
     // 前回表示されたキャラ名
     /** @type {string} */
     let lastCharacterName;
@@ -42,7 +46,9 @@ window.onload = () => {
     let labelStyleObject = {};
 
     // キャラ情報の監視オブジェクト
-    let characterInfoElementObserve;
+    let characterInfoElementObserver;
+    // カスタムサブステータス押下の監視オブジェクト
+    let bodyElementObserver;
 
     // 汎用的な要素待機関数
     function waitForElement(selector, validate = (el) => !!el, 
@@ -50,12 +56,11 @@ window.onload = () => {
         return new Promise((resolve, reject) => {
             const anyObserver = new MutationObserver((mutationsList, observer) => {
                 const element = document.querySelector(selector);
-                if (element && validate(element)) {
+                if (element && (validate == null || validate(element))) {
                     observer.disconnect();
                     resolve(element);
                 }
             });
-
             // DOMの変更を監視
             anyObserver.observe(document.body, options);
 
@@ -73,6 +78,11 @@ window.onload = () => {
             (el) => el.querySelector('.c-hrd-ri-name')?.textContent.trim().length > 0);
     }
 
+    // 全体
+    function getBodyElements() {
+        return waitForElement('.vsc-initialized', null);
+    }
+
 
     // 監視のコールバック
     const callback = (mutationsList, observer) => {
@@ -82,8 +92,10 @@ window.onload = () => {
                 console.log('動いたのは自作要素なので無視');
                 continue;
             }
-            if(observer === characterInfoElementObserve 
-                && (mutation.type === 'childList' || mutation.type === 'attributes')){
+            // キャラ選択
+            if(observer === characterInfoElementObserver 
+                && (mutation.type === 'childList' || mutation.type === 'attributes')
+            ){
                 const characterNameElement = mutation.target.querySelector('.c-hrd-ri-name');
                 if(characterNameElement){
                     const characterName = characterNameElement.textContent.trim();
@@ -94,36 +106,54 @@ window.onload = () => {
                     }
                 }
             } 
-            // else if(observer === chracterNameElementObserve 
-            //     && (mutation.type === 'attributes' || mutation.type === 'characterData')){
-            //     if(lastCharacterName === mutation.target.textContent.trim()){
-            //         console.log('前回とキャラ名が同じだったので無視');
-            //         continue;
-            //     }
-            //     lastCharacterName = mutation.target.textContent.trim();
-            //     reDraw();
-            // }
+            // カスタムサブステータス
+            else if(observer === bodyElementObserver 
+                && mutation.type === 'attributes' 
+                && mutation.attributeName  === 'class'
+            ){
+                const oldClassString = mutation.oldValue || '';
+                const oldClassList = oldClassString.split(' ').filter(Boolean);
+                // カスタムサブステータスを閉じたとき（=hiddenがなくなったとき）
+                if(oldClassList.includes('van-overflow-hidden') 
+                    && !mutation.target.classList.contains('van-overflow-hidden')
+                ){
+                    console.log('カスタムサブステータス画面が閉じられたので再描画');
+                    reDraw();
+                }
+            }
         }
-    };
-
-    // 監視設定
-    const config = {
-        childList: true,
-        attributes: true,
-        subtree: true,
-        characterData: true,
-        characterDataOldValue: false,
-        attributeOldValue: false,
     };
 
     // 監視を再設定する関数
     function setObservers() {
-        // 既存の監視を解除
-        if (characterInfoElementObserve) {
-            characterInfoElementObserve.disconnect();
+        // キャラ名
+        if (characterInfoElementObserver) {
+            characterInfoElementObserver.disconnect();
         }
-        characterInfoElementObserve = new MutationObserver(callback);
-        characterInfoElementObserve.observe(characterInfoElement, config);
+        characterInfoElementObserver = new MutationObserver(callback);
+        characterInfoElementObserver.observe(characterInfoElement, {
+            childList: true,
+            attributes: true,
+            subtree: true,
+            characterData: true,
+            characterDataOldValue: false,
+            attributeOldValue: false
+        });
+        // カスタムサブステータス
+        if(bodyElementObserver){
+            bodyElementObserver.disconnect();
+        }
+        bodyElementObserver = new MutationObserver(callback);
+        bodyElementObserver.observe(bodyElement, {
+            childList: false,
+            attributes: true,
+            subtree: false,
+            characterData: false,
+            characterDataOldValue: false,
+            attributeOldValue: true,
+            attributeFilter: ['class']
+        });
+
     }
 
     // 簡略モード中
@@ -155,6 +185,16 @@ window.onload = () => {
                 , supPropNameAndValue.value));
         });
         return Math.floor(score * 100) / 100;
+    }
+
+    // 数値オリジナル要素のスタイルをコピー
+    function applyOriginalStyle(originalElement, targetElement){
+        const allowedProperties = ['font-size', 'text-align', 'font-family', 'color'];
+        const originalStyle = window.getComputedStyle(originalElement);
+        allowedProperties.forEach(property => {
+            const value = computedStyle.getPropertyValue(property);
+            targetElement.style.setProperty(property, value);
+        });
     }
 
 
@@ -234,6 +274,7 @@ window.onload = () => {
         newDiv.textContent = score.toFixed(2);
         newDiv.style.textAlign = 'right';
         newDiv.style.color = 'white';
+        newDiv.style.background = 'none';
         // スタイル設定
         return newDiv;
     }
@@ -250,14 +291,14 @@ window.onload = () => {
                 const parent = relicElements[i];
                 const score = calculateScore(parent);
                 scores += score;
-                const titleElement = parent.querySelector('.c-hrdr-title');
                 const scoreDiv = createScoreElement(score);
-                parent.insertBefore(scoreDiv, titleElement);
+                parent.append(scoreDiv);
                 console.log(`要素を作った(${i})`);
             }
+            // 合計スコア
             const totalScoreDiv = createScoreElement(scores);
             const relicListElement = characterInfoElement.querySelector('.c-hrdrs-btm');
-            relicListElement.parentNode.insertBefore(totalScoreDiv, relicListElement);
+            relicListElement.parentNode.append(totalScoreDiv);
         }else{
             console.log('遺物リスト要素が取得できないので描画失敗');
         }
@@ -311,6 +352,8 @@ window.onload = () => {
         characterInfoElement = await getCharacterInfoElements();
         lastCharacterName = characterInfoElement
             .querySelector('.c-hrd-ri-name').textContent.trim();
+        // ボディ
+        bodyElement = await getBodyElements();
 
         // const subPropsElement = await waitForElement('.sub-props');
         // // 項目ラベル用のスタイル取得
@@ -339,47 +382,8 @@ window.onload = () => {
 
         // 変更監視開始
         setObservers();
-        addEventListenerToButton();
     }
 
-    function addEventListenerToButton(){
-        document.querySelector('.pc-rdnp-mark').addEventListener('click', () => {
-            console.log("カスタムサブステータスボタンが押された");
-          
-            // // 2. ポップアップ要素が生成されるまで待つ
-            // const checkPopup = setInterval(() => {
-            //   const popup = document.querySelector("#popupElement"); // ポップアップのIDやクラスを適宜変更
-          
-            //   if (popup) {
-            //     clearInterval(checkPopup); // 見つかったら監視停止
-            //     console.log("ポップアップが表示された");
-          
-            //     // 3. ポップアップの削除や非表示を監視
-            //     const observer = new MutationObserver(mutations => {
-            //       mutations.forEach(mutation => {
-            //         if (mutation.type === "attributes" && mutation.attributeName === "style") {
-            //           // display: none の場合
-            //           if (getComputedStyle(popup).display === "none") {
-            //             console.log("ポップアップが非表示になった");
-            //             observer.disconnect(); // 監視を停止
-            //             afterPopupHidden(); // 追加処理を実行
-            //           }
-            //         } else if (mutation.type === "childList" && !document.contains(popup)) {
-            //           // ポップアップが削除された場合
-            //           console.log("ポップアップが削除された");
-            //           observer.disconnect();
-            //           afterPopupHidden();
-            //         }
-            //       });
-            //     });
-          
-            //     observer.observe(popup, { attributes: true, attributeFilter: ["style"], childList: true });
-          
-            //     console.log("ポップアップの非表示監視を開始");
-            //   }
-            // }, 100);
-          });
-    }
 
     // スコア要素作成
     async function firstDraw(){
