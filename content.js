@@ -294,9 +294,7 @@ window.onload = () => {
         const newDiv = document.createElement('div');
         newDiv.classList.add(MY_CLASS);
         newDiv.textContent = score.toFixed(2);
-        newDiv.style.textAlign = 'right';
-        newDiv.style.color = 'white';
-        newDiv.style.background = 'none';
+        applyOriginalNumberStyle(newDiv);
         // スタイル設定
         return newDiv;
     }
@@ -336,26 +334,6 @@ window.onload = () => {
 
     // 最初に実行
     async function setup(){
-        // コピー対象のスタイルプロパティ
-        // const allowedProperties = ['font-size', 'text-align', 'font-family', 'color'];
-        // 説明用のスタイル取得
-        // const artifactHeaderElement = await waitForElement('.artifact-info header');
-        // const descriptionElements = artifactHeaderElement.querySelectorAll('div');
-        // let descriptionElement = null;
-        // const searchKeyForDescription = 'ハイライトされたステータス';
-        // for (let el of descriptionElements) {
-        //     if (el.childNodes.length === 1 && el.firstChild.nodeType === Node.TEXT_NODE) {
-        //         if (el.textContent.includes(searchKeyForDescription)) {
-        //             descriptionElement = el;
-        //             break;
-        //         }
-        //     }
-        // }
-        // const descriptionTextStyle = window.getComputedStyle(descriptionElement);
-        // for (let style of allowedProperties) {
-        //     descriptionStyleObject[style] = descriptionTextStyle.getPropertyValue(style);
-        // }
-
         // キャラ名
         characterInfoElement = await getCharacterInfoElements();
         lastCharacterName = characterInfoElement
@@ -363,31 +341,26 @@ window.onload = () => {
         // ボディ
         bodyElement = await getBodyElements();
 
-        // const subPropsElement = await waitForElement('.sub-props');
+        // コピー対象のスタイルプロパティ
+        const allowedProperties = ['font-size', 'text-align', 'font-family', 'color'];
         // // 項目ラベル用のスタイル取得
-        // const subPropsElements = subPropsElement.querySelectorAll('p');
-        // let labelElement = null;
-        // const searchKeyForLabel = '追加ステータス';
-        // for (let el of subPropsElements) {
-        //     if (el.childNodes.length === 1 && el.firstChild.nodeType === Node.TEXT_NODE) {
-        //         if (el.textContent.includes(searchKeyForLabel)) {
-        //             labelElement = el;
-        //             break;
-        //         }
-        //     }
-        // }
-        // const labelTextStyle = window.getComputedStyle(labelElement);
-        // for (let style of allowedProperties) {
-        //     labelStyleObject[style] = labelTextStyle.getPropertyValue(style);
-        // }
-        // subPropListElement = subPropsElement.querySelector('.c-rdd-mark-options');
+        const nameElement = characterInfoElement.querySelector('.c-hrdcs-name');
+        const nameTextStyle = window.getComputedStyle(nameElement);
+        for (let style of allowedProperties) {
+            labelStyleObject[style] = nameTextStyle.getPropertyValue(style);
+        }
         // 数値用スタイル取得
-        // const finalTextElement = await waitForElement('.final-text');
-        // const finalTextStyle = window.getComputedStyle(finalTextElement);
-        // for (let style of allowedProperties) {
-        //     numberStyleObject[style] = finalTextStyle.getPropertyValue(style);
-        // }
-
+        const numberElement = characterInfoElement.querySelector('.c-hrdcs-num');
+        const numberTextStyle = window.getComputedStyle(numberElement);
+        for (let style of allowedProperties) {
+            numberStyleObject[style] = numberTextStyle.getPropertyValue(style);
+        }
+        // 説明用のスタイル取得
+        const descriptionElement = characterInfoElement.querySelector('.c-hrdrs-title-tip');
+        const descriptionTextStyle = window.getComputedStyle(descriptionElement);
+        for (let style of allowedProperties) {
+            descriptionStyleObject[style] = descriptionTextStyle.getPropertyValue(style);
+        }
         // 変更監視開始
         setObservers();
     }
