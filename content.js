@@ -1,20 +1,6 @@
-// 有効サブステータスは数が多いと文字列が消えるので、
-// 非表示になっているポップアップ（カスタムサブステータス）側のチェックで判断する
-// 簡略表示のときはステータスが出ないのでそれも考慮
 window.onload = () => {
-
 // document.addEventListener('DOMContentLoaded', () => {
     const MY_CLASS = 'alk-element';
-
-    // とりあえず親を保持->前の名前を保持し、名前が変わったら再描画
-    // ↑が実装できたら次
-    // ボタンが押されたらポップアップをつかみ、ポップアップのdisplayを監視する
-    // displayの監視でも描画
-
-    // 簡略モードに入るとバグる
-    // pc-role-detail なら通常、pc-role-lite なら簡略
-    // あと、簡略モードに入る->キャラ変更->簡略モードから戻る　に対応できていない
-    // 簡略モードから戻るとこも検知する
 
     // キャラ親要素
     /** @type {HTMLElement | null} */
@@ -210,17 +196,6 @@ window.onload = () => {
     }
 
     // 数値オリジナル要素のスタイルをコピー
-    function applyOriginalStyle(originalElement, targetElement){
-        const allowedProperties = ['font-size', 'text-align', 'font-family', 'color'];
-        const originalStyle = window.getComputedStyle(originalElement);
-        allowedProperties.forEach(property => {
-            const value = computedStyle.getPropertyValue(property);
-            targetElement.style.setProperty(property, value);
-        });
-    }
-
-
-    // 数値オリジナル要素のスタイルをコピー
     function applyOriginalNumberStyle(element){
         Object.assign(element.style, numberStyleObject);
     }
@@ -289,36 +264,59 @@ window.onload = () => {
         }
     }
 
-    // スコア要素作成
-    function createScoreElement(score){
-        const newDiv = document.createElement('div');
-        newDiv.classList.add(MY_CLASS);
-        newDiv.textContent = score.toFixed(2);
-        applyOriginalNumberStyle(newDiv);
-        // スタイル設定
-        return newDiv;
-    }
-
     // 描画
     function draw(){
         if (characterInfoElement) {
             characterInfoElement.querySelectorAll(`.${MY_CLASS}`).forEach(element => {
                 element.remove();
             });
+            // 遺物要素
             const relicElements = characterInfoElement.querySelectorAll('.c-hrdr-item');
             let scores = 0;
+            let clonedElement;
             for(let i = 0; i < relicElements.length; i++){
                 const parent = relicElements[i];
+                const firstItem = parent.querySelector('.c-hrdr-btm-item');
+                const backgroundColor = firstItem.style.backgroundColor;
+                clonedElement = firstItem.cloneNode(true);
+                clonedElement.querySelectorAll('canvas').forEach(el => el.remove());
+                clonedElement.querySelectorAll('img').forEach(el => el.remove());
+                clonedElement.querySelectorAll('[highlight]').forEach(child => {
+                    child.removeAttribute('highlight');
+                });
                 const score = calculateScore(parent);
                 scores += score;
-                const scoreDiv = createScoreElement(score);
-                parent.append(scoreDiv);
+                
+                clonedElement.classList.add(MY_CLASS);
+                const clonedNameElement = clonedElement.querySelector('.c-hrdr-name');
+                clonedNameElement.textContent = 'スコア';
+                clonedNameElement.style.color = 'rgba(255,255,255,0.9)';
+                const clonedNumebrElement = clonedElement.querySelector('.c-hrdr-num');
+                clonedNumebrElement.textContent = score.toFixed(2);
+
+                // 背景用のdivを作成
+                const backgroundDiv = document.createElement('div');
+                backgroundDiv.style.cssText = 'position: absolute; top: 0; left: 0; right: 0; bottom: 0;';
+                backgroundDiv.style.backgroundColor = 'rgba(255,255,255,0.10)'; // 半透明の赤背景
+                // 親要素に追加
+                clonedElement.style.position = 'relative';
+                clonedElement.appendChild(backgroundDiv);
+
+                // const scoreDiv = createScoreElement(score);
+                parent.append(clonedElement);
                 console.log(`要素を作った(${i})`);
             }
             // 聖遺物を1つも装備していない場合はスコアを描画しない
             if(relicElements.length > 0){
                 // 合計スコア
-                const totalScoreDiv = createScoreElement(scores);
+                const totalScoreDiv = document.createElement('div');
+                totalScoreDiv.classList.add(MY_CLASS);
+                totalScoreDiv.textContent = scores.toFixed(2);
+                applyOriginalNumberStyle(totalScoreDiv);
+                totalScoreDiv.style.height = '28px';
+                totalScoreDiv.style.paddingRight = '6px';
+                totalScoreDiv.style.lineHeight = '28px';
+                totalScoreDiv.style.fontSize = `calc(${totalScoreDiv.style.fontSize} * 1.2)`;
                 const relicListElement = characterInfoElement.querySelector('.c-hrdrs-btm');
                 relicListElement.parentNode.append(totalScoreDiv);
             }
@@ -364,7 +362,6 @@ window.onload = () => {
         // 変更監視開始
         setObservers();
     }
-
 
     // スコア要素作成
     async function firstDraw(){
