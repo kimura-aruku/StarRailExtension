@@ -273,12 +273,13 @@ window.onload = () => {
             // 遺物要素
             const relicElements = characterInfoElement.querySelectorAll('.c-hrdr-item');
             let scores = 0;
-            let clonedElement;
+            // 聖遺物の数だけスコア描画
             for(let i = 0; i < relicElements.length; i++){
                 const parent = relicElements[i];
+                // メインステータス行
                 const firstItem = parent.querySelector('.c-hrdr-btm-item');
-                const backgroundColor = firstItem.style.backgroundColor;
-                clonedElement = firstItem.cloneNode(true);
+                const backgroundColor = window.getComputedStyle(firstItem)['background-color'];
+                const clonedElement = firstItem.cloneNode(true);
                 clonedElement.querySelectorAll('canvas').forEach(el => el.remove());
                 clonedElement.querySelectorAll('img').forEach(el => el.remove());
                 clonedElement.querySelectorAll('[highlight]').forEach(child => {
@@ -293,32 +294,41 @@ window.onload = () => {
                 clonedNameElement.style.color = 'rgba(255,255,255,0.9)';
                 const clonedNumebrElement = clonedElement.querySelector('.c-hrdr-num');
                 clonedNumebrElement.textContent = score.toFixed(2);
-
+                
                 // 背景用のdivを作成
                 const backgroundDiv = document.createElement('div');
                 backgroundDiv.style.cssText = 'position: absolute; top: 0; left: 0; right: 0; bottom: 0;';
-                backgroundDiv.style.backgroundColor = 'rgba(255,255,255,0.10)'; // 半透明の赤背景
+                backgroundDiv.style.backgroundColor = backgroundColor;
                 // 親要素に追加
                 clonedElement.style.position = 'relative';
                 clonedElement.appendChild(backgroundDiv);
-
-                // const scoreDiv = createScoreElement(score);
                 parent.append(clonedElement);
-                console.log(`要素を作った(${i})`);
             }
             // 聖遺物を1つも装備していない場合はスコアを描画しない
             if(relicElements.length > 0){
                 // 合計スコア
-                const totalScoreDiv = document.createElement('div');
-                totalScoreDiv.classList.add(MY_CLASS);
-                totalScoreDiv.textContent = scores.toFixed(2);
-                applyOriginalNumberStyle(totalScoreDiv);
-                totalScoreDiv.style.height = '28px';
-                totalScoreDiv.style.paddingRight = '6px';
-                totalScoreDiv.style.lineHeight = '28px';
-                totalScoreDiv.style.fontSize = `calc(${totalScoreDiv.style.fontSize} * 1.2)`;
+                const totalScoreElement = document.createElement('div');
+                totalScoreElement.style.display = 'flex';
+                totalScoreElement.classList.add(MY_CLASS);
+                // ラベル
+                const totalLabelSpan = document.createElement('span');
+                applyOriginalLabelStyle(totalLabelSpan);
+                totalLabelSpan.textContent = '合計スコア';
+                totalLabelSpan.style.paddingLeft = '70%';
+                totalScoreElement.appendChild(totalLabelSpan);
+                // スコア数値
+                const totalScoreSpan = document.createElement('span');
+                applyOriginalNumberStyle(totalScoreSpan);
+                totalScoreSpan.textContent = scores.toFixed(2);
+                totalScoreSpan.style.marginLeft = 'auto';
+                totalScoreElement.appendChild(totalScoreSpan);
+                // ラベル+スコア数値
+                totalScoreElement.style.height = 'calc(28px * 1.2)';
+                totalScoreElement.style.paddingRight = '6px';
+                totalScoreElement.style.lineHeight = 'calc(28px * 1.2)';
+                totalScoreElement.style.fontSize = `calc(${totalScoreElement.style.fontSize} * 1.2)`;
                 const relicListElement = characterInfoElement.querySelector('.c-hrdrs-btm');
-                relicListElement.parentNode.append(totalScoreDiv);
+                relicListElement.parentNode.append(totalScoreElement);
             }
         }else{
             console.log('遺物リスト要素が取得できないので描画失敗');
