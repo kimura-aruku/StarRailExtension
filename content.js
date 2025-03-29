@@ -310,11 +310,17 @@ window.onload = () => {
                 const totalScoreElement = document.createElement('div');
                 totalScoreElement.style.display = 'flex';
                 totalScoreElement.classList.add(MY_CLASS);
+                // キャプション
+                const captionSpan = document.createElement('span');
+                applyOriginalDescriptionStyle(captionSpan);
+                captionSpan.textContent = 'スコアは有効サブステータスから算出されます。';
+                captionSpan.style.marginRight = 'auto';
+                totalScoreElement.appendChild(captionSpan);
                 // ラベル
                 const totalLabelSpan = document.createElement('span');
                 applyOriginalLabelStyle(totalLabelSpan);
                 totalLabelSpan.textContent = '合計スコア';
-                totalLabelSpan.style.paddingLeft = '70%';
+                totalLabelSpan.style.paddingLeft = '19%';
                 totalScoreElement.appendChild(totalLabelSpan);
                 // スコア数値
                 const totalScoreSpan = document.createElement('span');
@@ -326,7 +332,6 @@ window.onload = () => {
                 totalScoreElement.style.height = 'calc(28px * 1.2)';
                 totalScoreElement.style.paddingRight = '6px';
                 totalScoreElement.style.lineHeight = 'calc(28px * 1.2)';
-                totalScoreElement.style.fontSize = `calc(${totalScoreElement.style.fontSize} * 1.2)`;
                 const relicListElement = characterInfoElement.querySelector('.c-hrdrs-btm');
                 relicListElement.parentNode.append(totalScoreElement);
             }
@@ -350,7 +355,7 @@ window.onload = () => {
         bodyElement = await getBodyElements();
 
         // コピー対象のスタイルプロパティ
-        const allowedProperties = ['font-size', 'text-align', 'font-family', 'color'];
+        const allowedProperties = ['font-size', 'text-align', 'font-family', 'color', 'font-weight'];
         // // 項目ラベル用のスタイル取得
         const nameElement = characterInfoElement.querySelector('.c-hrdcs-name');
         const nameTextStyle = window.getComputedStyle(nameElement);
