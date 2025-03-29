@@ -272,10 +272,6 @@ window.onload = () => {
             });
             // 遺物要素
             const relicElements = characterInfoElement.querySelectorAll('.c-hrdr-item');
-            // 聖遺物を1つも装備していない場合は描画しない
-            if(relicElements.length == 0){
-                return;
-            }
             let scores = 0;
             // 聖遺物の数だけスコア描画
             for(let i = 0; i < relicElements.length; i++){
@@ -308,41 +304,37 @@ window.onload = () => {
                 clonedElement.appendChild(backgroundDiv);
                 parent.append(clonedElement);
             }
-            // 合計スコア
-            const totalScoreElement = document.createElement('div');
-            totalScoreElement.style.display = 'flex';
-            totalScoreElement.classList.add(MY_CLASS);
-            
-            const labelWithScoreDiv = document.createElement('div');
-            const firstItem = relicElements[0].querySelector('.c-hrdr-btm-item');
-            const rect = firstItem.getBoundingClientRect();
-            labelWithScoreDiv.style.width = `${rect.width}px`;
-            // ラベル
-            const totalLabelSpan = document.createElement('span');
-            applyOriginalLabelStyle(totalLabelSpan);
-            totalLabelSpan.textContent = '合計スコア';
-            totalLabelSpan.style.float = 'left';
-            totalLabelSpan.style.paddingLeft = '8px';
-            labelWithScoreDiv.appendChild(totalLabelSpan);
-            // スコア数値
-            const totalScoreSpan = document.createElement('span');
-            applyOriginalNumberStyle(totalScoreSpan);
-            totalScoreSpan.textContent = scores.toFixed(2);
-            totalScoreSpan.style.float = 'right';
-            totalScoreSpan.style.paddingRight = '6px';
-            labelWithScoreDiv.appendChild(totalScoreSpan);
-            totalScoreElement.appendChild(labelWithScoreDiv);
-            // キャプション
-            const captionSpan = document.createElement('span');
-            applyOriginalDescriptionStyle(captionSpan);
-            captionSpan.textContent = 'スコアは有効サブステータスから算出されます。';
-            captionSpan.style.marginLeft = 'auto';
-            totalScoreElement.appendChild(captionSpan);
-            // ラベル+スコア数値
-            totalScoreElement.style.height = 'calc(28px * 1.2)';
-            totalScoreElement.style.lineHeight = 'calc(28px * 1.2)';
-            const relicListElement = characterInfoElement.querySelector('.c-hrdrs-btm');
-            relicListElement.parentNode.append(totalScoreElement);
+            // 聖遺物を1つも装備していない場合はスコアを描画しない
+            if(relicElements.length > 0){
+                // 合計スコア
+                const totalScoreElement = document.createElement('div');
+                totalScoreElement.style.display = 'flex';
+                totalScoreElement.classList.add(MY_CLASS);
+                // キャプション
+                const captionSpan = document.createElement('span');
+                applyOriginalDescriptionStyle(captionSpan);
+                captionSpan.textContent = 'スコアは有効サブステータスから算出されます。';
+                captionSpan.style.marginRight = 'auto';
+                totalScoreElement.appendChild(captionSpan);
+                // ラベル
+                const totalLabelSpan = document.createElement('span');
+                applyOriginalLabelStyle(totalLabelSpan);
+                totalLabelSpan.textContent = '合計スコア';
+                totalLabelSpan.style.paddingLeft = '19%';
+                totalScoreElement.appendChild(totalLabelSpan);
+                // スコア数値
+                const totalScoreSpan = document.createElement('span');
+                applyOriginalNumberStyle(totalScoreSpan);
+                totalScoreSpan.textContent = scores.toFixed(2);
+                totalScoreSpan.style.marginLeft = 'auto';
+                totalScoreElement.appendChild(totalScoreSpan);
+                // ラベル+スコア数値
+                totalScoreElement.style.height = 'calc(28px * 1.2)';
+                totalScoreElement.style.paddingRight = '6px';
+                totalScoreElement.style.lineHeight = 'calc(28px * 1.2)';
+                const relicListElement = characterInfoElement.querySelector('.c-hrdrs-btm');
+                relicListElement.parentNode.append(totalScoreElement);
+            }
         }else{
             console.log('遺物リスト要素が取得できないので描画失敗');
         }
