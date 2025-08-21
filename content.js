@@ -63,7 +63,7 @@ window.onload = () => {
 
     // 全体
     function getBodyElements() {
-        return waitForElement('.vsc-initialized', null);
+        return waitForElement('.pc-role-detail-num', null);
     }
 
     // 監視のコールバック
