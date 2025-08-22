@@ -259,14 +259,14 @@ window.onload = () => {
         
         // 遺物要素
         const relicElements = characterInfoElement.querySelectorAll(SELECTORS.RELIC_ITEM);
-        // 聖遺物を1つも装備していない場合は描画しない
+        // 遺物を1つも装備していない場合は描画しない
         if(relicElements.length == 0){
             return;
         }
         
         let totalScore = 0;
         
-        // 聖遺物の数だけスコア描画
+        // 遺物の数だけスコア描画
         for(let i = 0; i < relicElements.length; i++){
             const parent = relicElements[i];
             const firstItem = parent.querySelector(SELECTORS.STAT_ITEM);
