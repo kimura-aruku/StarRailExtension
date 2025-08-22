@@ -1,6 +1,21 @@
 window.onload = () => {
     const MY_CLASS = 'alk-element';
 
+    // HoyoLabページのセレクタ定数
+    const SELECTORS = {
+        MAIN_CONTENT: '.pc-swiper-block-layout__content', // メインコンテンツエリア
+        CHARACTER_NAME: '.c-hrd-ri-name', // キャラクター名
+        ROLE_DETAIL_NUM: '.pc-role-detail-num', // 全体要素
+        RELIC_ITEM: '.c-hrdr-item', // 遺物アイテム
+        RELIC_BOTTOM_AREA: '.c-hrdrs-btm', // 遺物下部エリア
+        STAT_ITEM: '.c-hrdr-btm-item', // ステータス行
+        STAT_NAME: '.c-hrdr-name', // ステータス名
+        STAT_NUMBER: '.c-hrdr-num', // ステータス数値
+        CHARACTER_STATS_NAME: '.c-hrdcs-name', // キャラクターステータス名
+        CHARACTER_STATS_NUMBER: '.c-hrdcs-num', // キャラクターステータス数値
+        DESCRIPTION_TIP: '.c-hrdrs-title-tip' // 説明テキスト
+    };
+
     // キャラ親要素
     /** @type {HTMLElement | null} */
     let characterInfoElement;
@@ -57,13 +72,13 @@ window.onload = () => {
 
     // 親要素取得
     function getCharacterInfoElements() {
-        return waitForElement('.pc-swiper-block-layout__content', 
-            (el) => el.querySelector('.c-hrd-ri-name')?.textContent.trim().length > 0);
+        return waitForElement(SELECTORS.MAIN_CONTENT, 
+            (el) => el.querySelector(SELECTORS.CHARACTER_NAME)?.textContent.trim().length > 0);
     }
 
     // 全体
     function getBodyElements() {
-        return waitForElement('.pc-role-detail-num', null);
+        return waitForElement(SELECTORS.ROLE_DETAIL_NUM, null);
     }
 
     // 監視のコールバック
@@ -77,7 +92,7 @@ window.onload = () => {
             if(observer === characterInfoElementObserver 
                 && (mutation.type === 'childList' || mutation.type === 'attributes')
             ){
-                const characterNameElement = mutation.target.querySelector('.c-hrd-ri-name');
+                const characterNameElement = mutation.target.querySelector(SELECTORS.CHARACTER_NAME);
                 if(characterNameElement){
                     const characterName = characterNameElement.textContent.trim();
                     if(characterName && lastCharacterName != characterName){
@@ -168,13 +183,13 @@ window.onload = () => {
     // スコアを計算し返す
     function calculateScore(relicElement){
         // メインステータスを除く、有効サブステータス
-        const supPropNameAndValues = Array.from(relicElement.querySelectorAll('.c-hrdr-btm-item'))
+        const supPropNameAndValues = Array.from(relicElement.querySelectorAll(SELECTORS.STAT_ITEM))
             .slice(1)
             .map(item => {
-                const numElement = item.querySelector('.c-hrdr-num');
+                const numElement = item.querySelector(SELECTORS.STAT_NUMBER);
                 return numElement?.getAttribute('highlight') === 'true'
                     ? {
-                        name: item.querySelector('.c-hrdr-name').textContent.trim(),
+                        name: item.querySelector(SELECTORS.STAT_NAME).textContent.trim(),
                         value: numElement.textContent.trim()
                     }
                     : null;
@@ -268,7 +283,7 @@ window.onload = () => {
             element.remove();
         });
         // 遺物要素
-        const relicElements = characterInfoElement.querySelectorAll('.c-hrdr-item');
+        const relicElements = characterInfoElement.querySelectorAll(SELECTORS.RELIC_ITEM);
         // 聖遺物を1つも装備していない場合は描画しない
         if(relicElements.length == 0){
             return;
@@ -278,7 +293,7 @@ window.onload = () => {
         for(let i = 0; i < relicElements.length; i++){
             const parent = relicElements[i];
             // メインステータス行
-            const firstItem = parent.querySelector('.c-hrdr-btm-item');
+            const firstItem = parent.querySelector(SELECTORS.STAT_ITEM);
             const backgroundColor = window.getComputedStyle(firstItem)['background-color'];
             const clonedElement = firstItem.cloneNode(true);
             clonedElement.querySelectorAll('canvas').forEach(el => el.remove());
@@ -290,10 +305,10 @@ window.onload = () => {
             scores += score;
             
             clonedElement.classList.add(MY_CLASS);
-            const clonedNameElement = clonedElement.querySelector('.c-hrdr-name');
+            const clonedNameElement = clonedElement.querySelector(SELECTORS.STAT_NAME);
             clonedNameElement.textContent = 'スコア';
             clonedNameElement.style.color = 'rgba(255,255,255,0.9)';
-            const clonedNumebrElement = clonedElement.querySelector('.c-hrdr-num');
+            const clonedNumebrElement = clonedElement.querySelector(SELECTORS.STAT_NUMBER);
             clonedNumebrElement.textContent = score.toFixed(2);
             
             // 背景用のdivを作成
@@ -331,7 +346,7 @@ window.onload = () => {
         totalScoreElement.style.height = 'calc(28px * 1.2)';
         totalScoreElement.style.paddingRight = '6px';
         totalScoreElement.style.lineHeight = 'calc(28px * 1.2)';
-        const relicListElement = characterInfoElement.querySelector('.c-hrdrs-btm');
+        const relicListElement = characterInfoElement.querySelector(SELECTORS.RELIC_BOTTOM_AREA);
         relicListElement.parentNode.append(totalScoreElement);
     }
 
@@ -345,26 +360,26 @@ window.onload = () => {
         // キャラ名
         characterInfoElement = await getCharacterInfoElements();
         lastCharacterName = characterInfoElement
-            .querySelector('.c-hrd-ri-name').textContent.trim();
+            .querySelector(SELECTORS.CHARACTER_NAME).textContent.trim();
         // ボディ
         bodyElement = await getBodyElements();
 
         // コピー対象のスタイルプロパティ
         const allowedProperties = ['font-size', 'text-align', 'font-family', 'color', 'font-weight'];
         // // 項目ラベル用のスタイル取得
-        const nameElement = characterInfoElement.querySelector('.c-hrdcs-name');
+        const nameElement = characterInfoElement.querySelector(SELECTORS.CHARACTER_STATS_NAME);
         const nameTextStyle = window.getComputedStyle(nameElement);
         for (let style of allowedProperties) {
             labelStyleObject[style] = nameTextStyle.getPropertyValue(style);
         }
         // 数値用スタイル取得
-        const numberElement = characterInfoElement.querySelector('.c-hrdcs-num');
+        const numberElement = characterInfoElement.querySelector(SELECTORS.CHARACTER_STATS_NUMBER);
         const numberTextStyle = window.getComputedStyle(numberElement);
         for (let style of allowedProperties) {
             numberStyleObject[style] = numberTextStyle.getPropertyValue(style);
         }
         // 説明用のスタイル取得
-        const descriptionElement = characterInfoElement.querySelector('.c-hrdrs-title-tip');
+        const descriptionElement = characterInfoElement.querySelector(SELECTORS.DESCRIPTION_TIP);
         const descriptionTextStyle = window.getComputedStyle(descriptionElement);
         for (let style of allowedProperties) {
             descriptionStyleObject[style] = descriptionTextStyle.getPropertyValue(style);
