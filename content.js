@@ -1,5 +1,6 @@
 window.onload = () => {
-    const MY_CLASS = 'alk-element';
+    const config = window.AppConfig;
+    const MY_CLASS = config.MY_CLASS;
 
     // HoyoLabページのセレクタ定数
     const SELECTORS = {
@@ -68,8 +69,8 @@ window.onload = () => {
             // タイムアウト処理
             setTimeout(() => {
                 anyObserver.disconnect();
-                reject(new Error(`Timeout: 要素 ${selector} が見つかりませんでした`));
-            }, 10000);
+                reject(new Error(`${config.UI_STRINGS.ERROR_TIMEOUT_PREFIX} ${selector} ${config.UI_STRINGS.ERROR_TIMEOUT_SUFFIX}`));
+            }, config.TIMEOUTS.ELEMENT_WAIT);
         });
     }
 
@@ -111,7 +112,7 @@ window.onload = () => {
             ){
                 const oldClassString = mutation.oldValue || '';
                 const oldClassList = oldClassString.split(' ').filter(Boolean);
-                const className = 'van-overflow-hidden';
+                const className = config.MONITOR_CLASSES.VAN_OVERFLOW_HIDDEN;
                 // カスタムサブステータスを閉じたとき（=hiddenがなくなったとき）
                 if(oldClassList.includes(className) 
                     && !mutation.target.classList.contains(className)
@@ -126,7 +127,7 @@ window.onload = () => {
             ){
                 const oldClassString = mutation.oldValue || '';
                 const oldClassList = oldClassString.split(' ').filter(Boolean);
-                const className = 'pc-role-lite';
+                const className = config.MONITOR_CLASSES.PC_ROLE_LITE;
                 // カスタムサブステータスを閉じたとき（=liteがなくなったとき）
                 if(oldClassList.includes(className) 
                     && !mutation.target.classList.contains(className)
@@ -145,42 +146,22 @@ window.onload = () => {
             characterInfoElementObserver.disconnect();
         }
         characterInfoElementObserver = new MutationObserver(callback);
-        characterInfoElementObserver.observe(characterInfoElement, {
-            childList: true,
-            attributes: true,
-            subtree: true,
-            characterData: true,
-            characterDataOldValue: false,
-            attributeOldValue: false
-        });
+        characterInfoElementObserver.observe(characterInfoElement, 
+            config.OBSERVER_OPTIONS.CHARACTER_INFO);
         // カスタムサブステータス
         if(bodyElementObserver){
             bodyElementObserver.disconnect();
         }
         bodyElementObserver = new MutationObserver(callback);
-        bodyElementObserver.observe(bodyElement, {
-            childList: false,
-            attributes: true,
-            subtree: false,
-            characterData: false,
-            characterDataOldValue: false,
-            attributeOldValue: true,
-            attributeFilter: ['class']
-        });
+        bodyElementObserver.observe(bodyElement, 
+            config.OBSERVER_OPTIONS.CUSTOM_SUBSTAT);
         // 簡略モード
         if(liteModeElementObserver){
             liteModeElementObserver.disconnect();
         }
         liteModeElementObserver = new MutationObserver(callback);
-        liteModeElementObserver.observe(bodyElement, {
-            childList: false,
-            attributes: true,
-            subtree: true,
-            characterData: false,
-            characterDataOldValue: false,
-            attributeOldValue: true,
-            attributeFilter: ['class']
-        });
+        liteModeElementObserver.observe(bodyElement, 
+            config.OBSERVER_OPTIONS.LITE_MODE);
     }
 
     // スコアを計算し返す
@@ -224,20 +205,7 @@ window.onload = () => {
 
     // スコアにして返す
     function getScore(subPropName, subPropValue){
-        const PROP_NAME = Object.freeze({
-            HP: 'HP',
-            HP_PERCENT: 'HP割合',
-            ATK: '攻撃力',
-            ATK_PERCENT: '攻撃力割合',
-            DEF: '防御力',
-            DEF_PERCENT: '防御力割合',
-            SPD: '速度',
-            CRIT_RATE: '会心率',
-            CRIT_DMG: '会心ダメージ',
-            BREAK_EFFECT: '撃破特効',
-            EFFECT_HIT_RATE: '効果命中',
-            EFFECT_RES: '効果抵抗'
-        });
+        const PROP_NAME = config.STAT_NAMES;
 
         // 実数かパーセントか判断できない状態
         const isRealOrPercent = [PROP_NAME.HP, PROP_NAME.ATK, PROP_NAME.DEF]
@@ -258,19 +226,19 @@ window.onload = () => {
                 return subPropValue;
             // 会心率
             case PROP_NAME.CRIT_RATE:
-                return subPropValue * 2.0;
+                return subPropValue * config.SCORE_COEFFICIENTS.CRIT_RATE_MULTIPLIER;
             // 攻撃力%、HP%、効果命中、効果抵抗
             case PROP_NAME.ATK_PERCENT:
             case PROP_NAME.HP_PERCENT:
             case PROP_NAME.EFFECT_HIT_RATE:
             case PROP_NAME.EFFECT_RES:
-                return subPropValue * 1.5;
+                return subPropValue * config.SCORE_COEFFICIENTS.ATK_HP_EFFECT_MULTIPLIER;
             // 防御%
             case PROP_NAME.DEF_PERCENT:
-                return subPropValue * 1.2;
+                return subPropValue * config.SCORE_COEFFICIENTS.DEF_MULTIPLIER;
             // 速度
             case PROP_NAME.SPD:
-                return (64.8/25.0) * subPropValue;
+                return (config.SCORE_COEFFICIENTS.SPEED_BASE / config.SCORE_COEFFICIENTS.SPEED_DIVISOR) * subPropValue;
             default:
                 return 0;
         }
@@ -279,15 +247,15 @@ window.onload = () => {
     // 描画
     function draw(){
         if (!characterInfoElement) {
-            console.log('遺物リスト要素が取得できないので描画失敗');
+            console.log(config.UI_STRINGS.ERROR_NO_RELIC_LIST);
             return;
         }
         if (!scoreComponent) {
-            console.log('スコアコンポーネントが初期化されていません');
+            console.log(config.UI_STRINGS.ERROR_NO_SCORE_COMPONENT);
             return;
         }
         
-        scoreComponent.removeAllScoreElements(characterInfoElement);
+        scoreComponent.removeAllScoreElements(characterInfoElement, config.MY_CLASS);
         
         // 遺物要素
         const relicElements = characterInfoElement.querySelectorAll(SELECTORS.RELIC_ITEM);
@@ -307,7 +275,12 @@ window.onload = () => {
             totalScore += score;
             
             const relicScoreElement = scoreComponent.createRelicScoreElement(
-                score, backgroundColor, firstItem, SELECTORS
+                score, backgroundColor, firstItem, SELECTORS, {
+                    scoreLabel: config.UI_STRINGS.SCORE_LABEL,
+                    scoreTextColor: config.STYLES.SCORE_TEXT_COLOR,
+                    backgroundPosition: config.STYLES.BACKGROUND_POSITION,
+                    elementClass: config.MY_CLASS
+                }
             );
             if (relicScoreElement) {
                 parent.append(relicScoreElement);
@@ -322,7 +295,14 @@ window.onload = () => {
         };
         
         const totalScoreElement = scoreComponent.createTotalScoreElement(
-            totalScore, styleApplyFunctions
+            totalScore, styleApplyFunctions, {
+                scoreDescription: config.UI_STRINGS.SCORE_DESCRIPTION,
+                totalScoreLabel: config.UI_STRINGS.TOTAL_SCORE_LABEL,
+                containerHeight: config.STYLES.TOTAL_SCORE_HEIGHT,
+                containerPaddingRight: config.STYLES.TOTAL_SCORE_PADDING_RIGHT,
+                containerLineHeight: config.STYLES.TOTAL_SCORE_LINE_HEIGHT,
+                labelPaddingLeft: config.STYLES.TOTAL_SCORE_LABEL_PADDING_LEFT
+            }
         );
         
         if (totalScoreElement) {
@@ -349,7 +329,7 @@ window.onload = () => {
         bodyElement = await getBodyElements();
 
         // コピー対象のスタイルプロパティ
-        const allowedProperties = ['font-size', 'text-align', 'font-family', 'color', 'font-weight'];
+        const allowedProperties = config.STYLE_PROPERTIES;
         // // 項目ラベル用のスタイル取得
         const nameElement = characterInfoElement.querySelector(SELECTORS.CHARACTER_STATS_NAME);
         const nameTextStyle = window.getComputedStyle(nameElement);
@@ -378,10 +358,10 @@ window.onload = () => {
             await setup();
             draw();
         } catch (error) {
-            console.error('エラー:', error);
+            console.error(config.UI_STRINGS.LOG_ERROR_PREFIX, error);
         }
     }
 
-    console.log('拡張処理開始');
+    console.log(config.UI_STRINGS.LOG_EXTENSION_START);
     firstDraw();
 };
