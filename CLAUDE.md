@@ -40,12 +40,110 @@
 
 拡張機能は以下のURLでのみ動作します: `https://act.hoyolab.com/app/community-game-records-sea/rpg/index.html*`
 
-拡張機能が操作する主要なDOM要素:
+### 拡張機能が操作する主要なDOM要素
+
 - `.pc-swiper-block-layout__content` - キャラクター情報コンテナ
 - `.c-hrd-ri-name` - キャラクター名要素
 - `.c-hrdr-item` - 遺物要素
 - `.c-hrdr-btm-item` - 個別ステータス行
 - `.c-hrdr-num[highlight="true"]` - ハイライトされた有効サブステータス
+
+## 元のHTML構造
+
+### メインコンテナ
+```html
+<!-- 【.pc-swiper-block-layout__content】キャラクター選択 + キャラクター詳細  -->
+<div class="pc-swiper-block-layout__content">
+  <div class="pc-role-detail">
+    <!-- キャラクター選択UI -->
+    <div class="pc-role-controller">
+      <!-- 中略（キャラクター切り替えUI） -->
+    </div>
+    
+    <!-- キャラクター詳細情報 -->
+    <div>
+      <div class="pc-role-detail-num">
+        <!-- 中略（キャラクター詳細 背景） -->
+
+        <!-- キャラクター詳細 左要素 + 右要素 -->
+        <div class="pc-rdnp">
+          <!-- キャラクター詳細 左要素（キャラ画像、名前、レベル、凸数、光円錐） -->
+          <div class="pc-rdnp-left">
+            <!-- キャラクター詳細 左要素-キャラ -->
+            <div class="c-hrd-ri">
+              <!-- 中略（キャラクター詳細 画像） -->
+              <div class="c-hrd-ri-info">
+                <div class="c-hrd-ri-1">
+                  <!-- 【.c-hrd-ri-name】キャラクター名表示（拡張機能の監視対象） -->
+                  <div class="c-hrd-ri-name">キャラクター名</div>
+                </div>
+                <!-- 中略（c-hrd-ri-2～3（属性、運命、凸数）） -->
+              </div>
+            </div>
+            <!-- 中略（キャラクター詳細 左要素-光円錐） -->
+          </div>
+
+          <!-- キャラクター詳細 右要素（キャラステータス、遺物） -->
+          <div class="pc-rdnp-right">
+            <!-- 中略（タイトル、カスタムサブステータスボタン、キャラクターステータス） -->
+            <!-- キャラクター詳細 右要素（遺物関連） -->
+            <div class="c-hrdrs">
+              <div class="c-hrdrs-title">
+                <!-- 中略（タイトルラベル） -->
+                <!-- 【.c-hrdrs-title-tip】説明文（拡張機能のスタイル参照用） -->
+                <div class="c-hrdrs-title-tip">説明文</div>
+              </div>
+              <!-- 中略（有効サブステータス） -->
+              <!-- キャラクター詳細 右要素（遺物x6） -->
+              <div class="c-hrdrs-btm">
+                <!-- 【.c-hrdr-item】個別遺物要素（拡張機能のスコア計算対象） -->
+                <div class="c-hrdr-item">
+                  <!-- 中略（タイトル、遺物レベル） -->
+                  <!-- 遺物メインステータス + 遺物サブステータス -->
+                  <div class="c-hrdr-btm">
+                    <!-- メイン/サブステータスの数だけc-hrdr-itemが存在 -->
+                    <div class="c-hrdr-btm-item">
+                      <!-- 中略（ステータスアイコン） -->
+                      <!-- 【.c-hrdcs-name】ステータス名（拡張機能のスタイル参照用） -->
+                      <span class="c-hrdr-name">
+                      <!-- .c-hrdcs-num】ステータス数値（拡張機能のスタイル参照用） -->
+                      <span class="c-hrdr-num">
+                    </div>
+                    <!-- 中略（残りのc-hrdr-btm-item） -->
+                  </div>
+                </div>
+                <!-- 中略（遺物の数だけc-hrdr-itemが存在） -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+### 拡張機能での使用目的
+
+**監視対象要素:**
+- `.pc-swiper-block-layout__content` - キャラクター切り替え検知のため監視
+- `.c-hrd-ri-name` - キャラクター名変更の検知
+- `.pc-role-detail-num` - カスタムサブステータス変更と簡略モード解除の検知
+
+**スコア計算対象要素:**
+- `.c-hrdr-item` - 各遺物のスコア計算
+- `.c-hrdr-btm-item` - 個別ステータス行（メインステータスとサブステータス）
+- `.c-hrdr-name` - ステータス名の取得
+- `.c-hrdr-num[highlight="true"]` - ハイライトされた有効サブステータスの数値取得
+
+**スタイル参照用要素:**
+- `.c-hrdcs-name` - ラベル用スタイルの参照
+- `.c-hrdcs-num` - 数値用スタイルの参照
+- `.c-hrdrs-title-tip` - 説明文用スタイルの参照
+
+**スコア表示挿入位置:**
+- `.c-hrdrs-btm` の親要素内 - 合計スコア表示の挿入位置
+- 各 `.c-hrdr-item` 内 - 個別遺物スコア表示の挿入位置
 
 ## 重要な注意事項
 
