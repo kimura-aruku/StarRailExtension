@@ -16,6 +16,9 @@ window.onload = () => {
         DESCRIPTION_TIP: '.c-hrdrs-title-tip' // 説明テキスト
     };
 
+    // スコアコンポーネントのインスタンス
+    let scoreComponent;
+
     // キャラ親要素
     /** @type {HTMLElement | null} */
     let characterInfoElement;
@@ -279,75 +282,53 @@ window.onload = () => {
             console.log('遺物リスト要素が取得できないので描画失敗');
             return;
         }
-        characterInfoElement.querySelectorAll(`.${MY_CLASS}`).forEach(element => {
-            element.remove();
-        });
+        if (!scoreComponent) {
+            console.log('スコアコンポーネントが初期化されていません');
+            return;
+        }
+        
+        scoreComponent.removeAllScoreElements(characterInfoElement);
+        
         // 遺物要素
         const relicElements = characterInfoElement.querySelectorAll(SELECTORS.RELIC_ITEM);
         // 聖遺物を1つも装備していない場合は描画しない
         if(relicElements.length == 0){
             return;
         }
-        let scores = 0;
+        
+        let totalScore = 0;
+        
         // 聖遺物の数だけスコア描画
         for(let i = 0; i < relicElements.length; i++){
             const parent = relicElements[i];
-            // メインステータス行
             const firstItem = parent.querySelector(SELECTORS.STAT_ITEM);
             const backgroundColor = window.getComputedStyle(firstItem)['background-color'];
-            const clonedElement = firstItem.cloneNode(true);
-            clonedElement.querySelectorAll('canvas').forEach(el => el.remove());
-            clonedElement.querySelectorAll('img').forEach(el => el.remove());
-            clonedElement.querySelectorAll('[highlight]').forEach(child => {
-                child.removeAttribute('highlight');
-            });
             const score = calculateScore(parent);
-            scores += score;
+            totalScore += score;
             
-            clonedElement.classList.add(MY_CLASS);
-            const clonedNameElement = clonedElement.querySelector(SELECTORS.STAT_NAME);
-            clonedNameElement.textContent = 'スコア';
-            clonedNameElement.style.color = 'rgba(255,255,255,0.9)';
-            const clonedNumebrElement = clonedElement.querySelector(SELECTORS.STAT_NUMBER);
-            clonedNumebrElement.textContent = score.toFixed(2);
-            
-            // 背景用のdivを作成
-            const backgroundDiv = document.createElement('div');
-            backgroundDiv.style.cssText = 'position: absolute; top: 0; left: 0; right: 0; bottom: 0;';
-            backgroundDiv.style.backgroundColor = backgroundColor;
-            // 親要素に追加
-            clonedElement.style.position = 'relative';
-            clonedElement.appendChild(backgroundDiv);
-            parent.append(clonedElement);
+            const relicScoreElement = scoreComponent.createRelicScoreElement(
+                score, backgroundColor, firstItem, SELECTORS
+            );
+            if (relicScoreElement) {
+                parent.append(relicScoreElement);
+            }
         }
-        // 合計スコア
-        const totalScoreElement = document.createElement('div');
-        totalScoreElement.style.display = 'flex';
-        totalScoreElement.classList.add(MY_CLASS);
-        // キャプション
-        const captionSpan = document.createElement('span');
-        applyOriginalDescriptionStyle(captionSpan);
-        captionSpan.textContent = 'スコアは有効サブステータスから算出されます。';
-        captionSpan.style.marginRight = 'auto';
-        totalScoreElement.appendChild(captionSpan);
-        // ラベル
-        const totalLabelSpan = document.createElement('span');
-        applyOriginalLabelStyle(totalLabelSpan);
-        totalLabelSpan.textContent = '合計スコア';
-        totalLabelSpan.style.paddingLeft = '19%';
-        totalScoreElement.appendChild(totalLabelSpan);
-        // スコア数値
-        const totalScoreSpan = document.createElement('span');
-        applyOriginalNumberStyle(totalScoreSpan);
-        totalScoreSpan.textContent = scores.toFixed(2);
-        totalScoreSpan.style.marginLeft = 'auto';
-        totalScoreElement.appendChild(totalScoreSpan);
-        // ラベル+スコア数値
-        totalScoreElement.style.height = 'calc(28px * 1.2)';
-        totalScoreElement.style.paddingRight = '6px';
-        totalScoreElement.style.lineHeight = 'calc(28px * 1.2)';
-        const relicListElement = characterInfoElement.querySelector(SELECTORS.RELIC_BOTTOM_AREA);
-        relicListElement.parentNode.append(totalScoreElement);
+        
+        // 合計スコア用のスタイル
+        const styleApplyFunctions = {
+            applyOriginalDescriptionStyle,
+            applyOriginalLabelStyle,
+            applyOriginalNumberStyle
+        };
+        
+        const totalScoreElement = scoreComponent.createTotalScoreElement(
+            totalScore, styleApplyFunctions
+        );
+        
+        if (totalScoreElement) {
+            const relicListElement = characterInfoElement.querySelector(SELECTORS.RELIC_BOTTOM_AREA);
+            relicListElement.parentNode.append(totalScoreElement);
+        }
     }
 
     // 非同期処理を分離
@@ -357,6 +338,9 @@ window.onload = () => {
 
     // 最初に実行
     async function setup(){
+        // スコアコンポーネントを初期化
+        scoreComponent = new window.ScoreComponent();
+        
         // キャラ名
         characterInfoElement = await getCharacterInfoElements();
         lastCharacterName = characterInfoElement
