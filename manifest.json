@@ -12,6 +12,12 @@
     "web_accessible_resources": [{
         "resources": ["score-component.html"],
         "matches": ["https://act.hoyolab.com/*"]
-    }]
+    }],
+    "icons": {
+       "16": "Icons/Icon16.png",
+       "32": "Icons/Icon32.png",
+       "48": "Icons/Icon48.png",
+       "128": "Icons/Icon128.png"
+    }
  }
  
