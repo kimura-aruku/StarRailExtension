@@ -69,6 +69,7 @@ const AppConfig = {
             BREAK_EFFECT: '撃破特効',
             EFFECT_HIT_RATE: '効果命中',
             EFFECT_RES: '効果抵抗',
+            ENERGY_REGEN: 'EP回復効率',
             PERCENT_SUFFIX: '割合'
         },
         EN: {
@@ -84,6 +85,7 @@ const AppConfig = {
             BREAK_EFFECT: 'Break Effect',
             EFFECT_HIT_RATE: 'Effect Hit Rate',
             EFFECT_RES: 'Effect RES',
+            ENERGY_REGEN: 'Energy Regeneration Rate',
             PERCENT_SUFFIX: ' Percentage'
         }
     },
