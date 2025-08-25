@@ -123,12 +123,13 @@
 </div>
 ```
 
-### 拡張機能での使用目的
-
 **監視対象要素:**
 - `.pc-swiper-block-layout__content` - キャラクター切り替え検知のため監視
 - `.c-hrd-ri-name` - キャラクター名変更の検知
 - `.pc-role-detail-num` - カスタムサブステータス変更と簡略モード解除の検知
+- `.mhy-hoyolab-lang-selector__current-lang` - 言語設定変更の検知（JP/EN切り替え）
+- `window.popstate` - SPAナビゲーション（戻るボタン）の検知
+- `window.hashchange` - URLハッシュ変更の検知
 
 **スコア計算対象要素:**
 - `.c-hrdr-item` - 各遺物のスコア計算
