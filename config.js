@@ -22,17 +22,30 @@ const AppConfig = {
         BACKGROUND_POSITION: 'position: absolute; top: 0; left: 0; right: 0; bottom: 0;'
     },
     
-    // UI表示文字列
+    // 言語別UI表示文字列
     UI_STRINGS: {
-        SCORE_LABEL: 'スコア',
-        TOTAL_SCORE_LABEL: '合計スコア',
-        SCORE_DESCRIPTION: 'スコアは有効サブステータスから算出されます。',
-        ERROR_NO_RELIC_LIST: '遺物リスト要素が取得できないので描画失敗',
-        ERROR_NO_SCORE_COMPONENT: 'スコアコンポーネントが初期化されていません',
-        ERROR_TIMEOUT_PREFIX: 'Timeout: 要素',
-        ERROR_TIMEOUT_SUFFIX: 'が見つかりませんでした',
-        LOG_EXTENSION_START: '拡張処理開始',
-        LOG_ERROR_PREFIX: 'エラー:'
+        JP: {
+            SCORE_LABEL: 'スコア',
+            TOTAL_SCORE_LABEL: '合計スコア',
+            SCORE_DESCRIPTION: 'スコアは有効サブステータスから算出されます。',
+            ERROR_NO_RELIC_LIST: '遺物リスト要素が取得できないので描画失敗',
+            ERROR_NO_SCORE_COMPONENT: 'スコアコンポーネントが初期化されていません',
+            ERROR_TIMEOUT_PREFIX: 'Timeout: 要素',
+            ERROR_TIMEOUT_SUFFIX: 'が見つかりませんでした',
+            LOG_EXTENSION_START: '拡張処理開始',
+            LOG_ERROR_PREFIX: 'エラー:'
+        },
+        EN: {
+            SCORE_LABEL: 'Score',
+            TOTAL_SCORE_LABEL: 'Total Score',
+            SCORE_DESCRIPTION: 'Scores are calculated from effective sub-stats.',
+            ERROR_NO_RELIC_LIST: 'Failed to render: relic list element not found',
+            ERROR_NO_SCORE_COMPONENT: 'Score component is not initialized',
+            ERROR_TIMEOUT_PREFIX: 'Timeout: element',
+            ERROR_TIMEOUT_SUFFIX: 'was not found',
+            LOG_EXTENSION_START: 'Extension processing started',
+            LOG_ERROR_PREFIX: 'Error:'
+        }
     },
     
     // CSS監視関連のクラス名
@@ -41,20 +54,38 @@ const AppConfig = {
         PC_ROLE_LITE: 'pc-role-lite'
     },
     
-    // ステータス名の定数
+    // 言語別ステータス名の定数
     STAT_NAMES: {
-        HP: 'HP',
-        HP_PERCENT: 'HP割合',
-        ATK: '攻撃力',
-        ATK_PERCENT: '攻撃力割合',
-        DEF: '防御力',
-        DEF_PERCENT: '防御力割合',
-        SPD: '速度',
-        CRIT_RATE: '会心率',
-        CRIT_DMG: '会心ダメージ',
-        BREAK_EFFECT: '撃破特効',
-        EFFECT_HIT_RATE: '効果命中',
-        EFFECT_RES: '効果抵抗'
+        JP: {
+            HP: 'HP',
+            HP_PERCENT: 'HP割合',
+            ATK: '攻撃力',
+            ATK_PERCENT: '攻撃力割合',
+            DEF: '防御力',
+            DEF_PERCENT: '防御力割合',
+            SPD: '速度',
+            CRIT_RATE: '会心率',
+            CRIT_DMG: '会心ダメージ',
+            BREAK_EFFECT: '撃破特効',
+            EFFECT_HIT_RATE: '効果命中',
+            EFFECT_RES: '効果抵抗',
+            PERCENT_SUFFIX: '割合'
+        },
+        EN: {
+            HP: 'HP',
+            HP_PERCENT: 'HP Percentage',
+            ATK: 'ATK',
+            ATK_PERCENT: 'ATK Percentage',
+            DEF: 'DEF',
+            DEF_PERCENT: 'DEF Percentage',
+            SPD: 'SPD',
+            CRIT_RATE: 'CRIT Rate',
+            CRIT_DMG: 'CRIT DMG',
+            BREAK_EFFECT: 'Break Effect',
+            EFFECT_HIT_RATE: 'Effect Hit Rate',
+            EFFECT_RES: 'Effect RES',
+            PERCENT_SUFFIX: ' Percentage'
+        }
     },
     
     // タイムアウト設定
@@ -93,7 +124,27 @@ const AppConfig = {
     },
     
     // スタイルコピー対象プロパティ
-    STYLE_PROPERTIES: ['font-size', 'text-align', 'font-family', 'color', 'font-weight']
+    STYLE_PROPERTIES: ['font-size', 'text-align', 'font-family', 'color', 'font-weight'],
+    
+    // 言語検知と設定取得のヘルパー関数
+    getCurrentLanguage() {
+        const langElement = document.querySelector('.mhy-hoyolab-lang-selector__current-lang');
+        if (langElement) {
+            const langText = langElement.textContent.trim();
+            return langText === 'JP' ? 'JP' : 'EN'; // JP以外はすべてENとして扱う
+        }
+        return 'JP'; // デフォルトは日本語
+    },
+    
+    getUIStrings() {
+        const currentLang = this.getCurrentLanguage();
+        return this.UI_STRINGS[currentLang];
+    },
+    
+    getStatNames() {
+        const currentLang = this.getCurrentLanguage();
+        return this.STAT_NAMES[currentLang];
+    }
 };
 
 // グローバルに公開

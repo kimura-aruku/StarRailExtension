@@ -1,6 +1,23 @@
 window.onload = () => {
     const config = window.AppConfig;
     const MY_CLASS = config.MY_CLASS;
+    
+    // 言語対応の設定取得
+    let currentUIStrings = config.getUIStrings();
+    let currentStatNames = config.getStatNames();
+    
+    // 言語設定を更新する関数
+    function updateLanguageSettings() {
+        currentUIStrings = config.getUIStrings();
+        currentStatNames = config.getStatNames();
+    }
+    
+    // テキストを正規化する関数
+    function normalizeText(text) {
+        if (!text) return '';
+        // 非改行スペース(&nbsp;)を通常スペースに変換し、前後の空白を除去
+        return text.replace(/\u00A0/g, ' ').trim();
+    }
 
     // HoyoLabページのセレクタ定数
     const SELECTORS = {
@@ -69,7 +86,7 @@ window.onload = () => {
             // タイムアウト処理
             setTimeout(() => {
                 anyObserver.disconnect();
-                reject(new Error(`${config.UI_STRINGS.ERROR_TIMEOUT_PREFIX} ${selector} ${config.UI_STRINGS.ERROR_TIMEOUT_SUFFIX}`));
+                reject(new Error(`${currentUIStrings.ERROR_TIMEOUT_PREFIX} ${selector} ${currentUIStrings.ERROR_TIMEOUT_SUFFIX}`));
             }, config.TIMEOUTS.ELEMENT_WAIT);
         });
     }
@@ -173,8 +190,8 @@ window.onload = () => {
                 const numElement = item.querySelector(SELECTORS.STAT_NUMBER);
                 return numElement?.getAttribute('highlight') === 'true'
                     ? {
-                        name: item.querySelector(SELECTORS.STAT_NAME).textContent.trim(),
-                        value: numElement.textContent.trim()
+                        name: normalizeText(item.querySelector(SELECTORS.STAT_NAME).textContent),
+                        value: normalizeText(numElement.textContent)
                     }
                     : null;
             })
@@ -205,13 +222,14 @@ window.onload = () => {
 
     // スコアにして返す
     function getScore(subPropName, subPropValue){
-        const PROP_NAME = config.STAT_NAMES;
+        const PROP_NAME = currentStatNames;
 
         // 実数かパーセントか判断できない状態
         const isRealOrPercent = [PROP_NAME.HP, PROP_NAME.ATK, PROP_NAME.DEF]
             .includes(subPropName);
         if(isRealOrPercent && subPropValue.includes('%')){
-            subPropName += '割合';
+            // 言語に応じたパーセント接尾辞を付加
+            subPropName += PROP_NAME.PERCENT_SUFFIX;
         }
         subPropValue = subPropValue.replace(/[%+]/g, '').trim();
         switch (subPropName) {
@@ -246,12 +264,15 @@ window.onload = () => {
 
     // 描画
     function draw(){
+        // 言語設定を最新に更新
+        updateLanguageSettings();
+        
         if (!characterInfoElement) {
-            console.log(config.UI_STRINGS.ERROR_NO_RELIC_LIST);
+            console.log(currentUIStrings.ERROR_NO_RELIC_LIST);
             return;
         }
         if (!scoreComponent) {
-            console.log(config.UI_STRINGS.ERROR_NO_SCORE_COMPONENT);
+            console.log(currentUIStrings.ERROR_NO_SCORE_COMPONENT);
             return;
         }
         
@@ -276,7 +297,7 @@ window.onload = () => {
             
             const relicScoreElement = scoreComponent.createRelicScoreElement(
                 score, backgroundColor, firstItem, SELECTORS, {
-                    scoreLabel: config.UI_STRINGS.SCORE_LABEL,
+                    scoreLabel: currentUIStrings.SCORE_LABEL,
                     scoreTextColor: config.STYLES.SCORE_TEXT_COLOR,
                     backgroundPosition: config.STYLES.BACKGROUND_POSITION,
                     elementClass: config.MY_CLASS
@@ -296,8 +317,8 @@ window.onload = () => {
         
         const totalScoreElement = scoreComponent.createTotalScoreElement(
             totalScore, styleApplyFunctions, {
-                scoreDescription: config.UI_STRINGS.SCORE_DESCRIPTION,
-                totalScoreLabel: config.UI_STRINGS.TOTAL_SCORE_LABEL,
+                scoreDescription: currentUIStrings.SCORE_DESCRIPTION,
+                totalScoreLabel: currentUIStrings.TOTAL_SCORE_LABEL,
                 containerHeight: config.STYLES.TOTAL_SCORE_HEIGHT,
                 containerPaddingRight: config.STYLES.TOTAL_SCORE_PADDING_RIGHT,
                 containerLineHeight: config.STYLES.TOTAL_SCORE_LINE_HEIGHT,
@@ -358,7 +379,7 @@ window.onload = () => {
             await setup();
             draw();
         } catch (error) {
-            console.error(config.UI_STRINGS.LOG_ERROR_PREFIX, error);
+            console.error(currentUIStrings.LOG_ERROR_PREFIX, error);
         }
     }
 
@@ -402,7 +423,7 @@ window.onload = () => {
         });
     }
 
-    console.log(config.UI_STRINGS.LOG_EXTENSION_START);
+    console.log(currentUIStrings.LOG_EXTENSION_START);
     setupBackButtonDetection();
     firstDraw();
 };
