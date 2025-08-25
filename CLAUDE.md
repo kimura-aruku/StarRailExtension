@@ -178,3 +178,26 @@
 ### セキュリティ面の改善点
 - **CSP対応**: インラインスタイルの使用を最小限に抑え、Content Security Policy対応を強化することを推奨
 - **XSS対策**: DOM要素への文字列設定時により厳密なサニタイゼーション処理の導入を推奨
+
+## 開発ガイドライン
+
+### Console ログの使用について
+
+デバッグ用にconsole.logを追加する場合は、HoyoLabのログと区別するために必ず以下の接頭語を使用してください：
+
+```javascript
+// 正しい例
+console.log('[StarRailExt] デバッグメッセージ');
+console.warn('[StarRailExt] 警告メッセージ');
+console.error('[StarRailExt] エラーメッセージ');
+```
+
+**理由:**
+- HoyoLab側のconsole出力と拡張機能のログを明確に分離できる
+- Chrome DevToolsのConsoleで`[StarRailExt]`でフィルタリングが可能
+- デバッグ作業の効率化とログの可読性向上
+
+**本番環境でのログ:**
+- エラーログ（console.error）は残す
+- 重要な状態変更のログは残す（言語変更完了など）
+- デバッグ用の詳細ログ（DEBUG接頭語付き）は削除する

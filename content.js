@@ -224,12 +224,6 @@ window.onload = () => {
     function getScore(subPropName, subPropValue){
         const PROP_NAME = currentStatNames;
         
-        console.log('[StarRailExt] DEBUG getScore:', {
-            input_name: subPropName,
-            input_value: subPropValue,
-            current_language: config.getCurrentLanguage(),
-            available_stat_names: PROP_NAME
-        });
 
         // 実数かパーセントか判断できない状態
         const isRealOrPercent = [PROP_NAME.HP, PROP_NAME.ATK, PROP_NAME.DEF]
@@ -237,7 +231,6 @@ window.onload = () => {
         if(isRealOrPercent && subPropValue.includes('%')){
             // 言語に応じたパーセント接尾辞を付加
             subPropName += PROP_NAME.PERCENT_SUFFIX;
-            console.log('[StarRailExt] DEBUG パーセント接尾辞付加後:', subPropName);
         }
         subPropValue = subPropValue.replace(/[%+]/g, '').trim();
         
@@ -275,10 +268,8 @@ window.onload = () => {
                 break;
             default:
                 score = 0;
-                console.warn('[StarRailExt] DEBUG 未対応のステータス名:', subPropName);
         }
         
-        console.log('[StarRailExt] DEBUG getScore結果:', { name: subPropName, value: subPropValue, score: score });
         return score;
     }
 
@@ -296,46 +287,14 @@ window.onload = () => {
             return;
         }
         
-        // スコア計算前の最終言語確認（デバッグ用）- DOM要素を完全に再取得
+        // DOM要素を完全に再取得（言語変更後の更新のため）
         const freshCharacterInfo = document.querySelector(SELECTORS.MAIN_CONTENT);
         if (!freshCharacterInfo) {
             console.warn('[StarRailExt] メインコンテンツが見つかりません');
             return;
         }
         
-        const debugRelicElements = freshCharacterInfo.querySelectorAll(SELECTORS.RELIC_ITEM);
-        console.log('[StarRailExt] スコア計算直前の全遺物確認（DOM再取得後）:');
-        console.log(`[StarRailExt] 現在の言語設定: ${config.getCurrentLanguage()}`);
-        console.log(`[StarRailExt] 期待されるステータス名: [${Object.values(currentStatNames).join(', ')}]`);
-        
-        if (debugRelicElements.length > 0) {
-            for (let i = 0; i < debugRelicElements.length; i++) {
-                const relicItem = debugRelicElements[i];
-                const statItems = relicItem.querySelectorAll(SELECTORS.STAT_ITEM);
-                
-                // 1つ目を除外（メインステータス）+ 拡張機能要素を除外
-                const subStatItems = Array.from(statItems).slice(1).filter(item => {
-                    // 拡張機能が追加した要素を除外
-                    return !item.classList.contains(config.MY_CLASS);
-                });
-                
-                const actualStatNames = subStatItems.map(item => {
-                    const nameElement = item.querySelector(SELECTORS.STAT_NAME);
-                    return nameElement ? normalizeText(nameElement.textContent) : null;
-                }).filter(Boolean);
-                
-                console.log(`[StarRailExt] 遺物 ${i+1} のサブステータス名（拡張要素除外後）: [${actualStatNames.join(', ')}]`);
-                
-                const unexpectedNames = actualStatNames.filter(name => 
-                    !Object.values(currentStatNames).includes(name)
-                );
-                if (unexpectedNames.length > 0) {
-                    console.warn(`[StarRailExt] 警告: 遺物 ${i+1} で期待言語と一致しないステータス名: [${unexpectedNames.join(', ')}]`);
-                }
-            }
-        }
-        
-        // characterInfoElementも更新
+        // characterInfoElementを更新
         characterInfoElement = freshCharacterInfo;
         
         scoreComponent.removeAllScoreElements(characterInfoElement, config.MY_CLASS);
@@ -447,26 +406,20 @@ window.onload = () => {
 
     // 言語変更後の再描画処理（最初のc-hrdr-itemが期待言語になるまで待機）
     async function handleLanguageChangeRedraw(fromLang, toLang) {
-        console.log('[StarRailExt] 言語変更後の再描画処理開始');
         
         try {
             // 現在のページが戦績画面かチェック
             if (!location.href.includes('/hsr')) {
-                console.log('[StarRailExt] 戦績画面ではないため、再描画をスキップします');
                 return;
             }
             
             // すべてのc-hrdr-itemが期待する言語になるまで待機
-            console.log('[StarRailExt] すべての遺物アイテムの言語変更完了まで待機中...');
             await waitForRelicItemLanguageChange();
             
             // 大幅な追加待機（確実にすべて完了するまで）
-            console.log('[StarRailExt] 言語変更の最終確認のため長時間待機...');
             await new Promise(resolve => setTimeout(resolve, 2000));
             
-            console.log('[StarRailExt] 言語変更後の再描画実行');
             draw();
-            console.log('[StarRailExt] 言語変更後の再描画完了');
             
         } catch (error) {
             console.error('[StarRailExt] 言語変更後の再描画エラー:', error);
@@ -481,12 +434,10 @@ window.onload = () => {
             
             const checkLanguage = () => {
                 attempts++;
-                console.log(`[StarRailExt] 言語変更チェック ${attempts}/${maxAttempts}`);
                 
                 // すべての遺物アイテムを取得
                 const allRelicItems = document.querySelectorAll(SELECTORS.RELIC_ITEM);
                 if (!allRelicItems || allRelicItems.length === 0) {
-                    console.log('[StarRailExt] 遺物アイテムが見つかりません');
                     if (attempts >= maxAttempts) {
                         console.warn('[StarRailExt] 言語変更チェックがタイムアウトしました');
                         resolve();
@@ -509,7 +460,6 @@ window.onload = () => {
                     // スコア計算と同じロジック：メインステータス（1つ目）を除外してチェック
                     const statItems = relicItem.querySelectorAll(SELECTORS.STAT_ITEM);
                     if (statItems.length === 0) {
-                        console.log(`[StarRailExt] 遺物アイテム ${i+1} にステータス項目が見つかりません`);
                         allItemsReady = false;
                         break;
                     }
@@ -524,7 +474,6 @@ window.onload = () => {
                         return nameElement ? normalizeText(nameElement.textContent) : null;
                     }).filter(Boolean);
                     
-                    console.log(`[StarRailExt] 遺物アイテム ${i+1} のサブステータス名: [${actualStatNames.join(', ')}]`);
                     totalStatNames.push(...actualStatNames);
                     
                     // この遺物アイテムのステータス名が期待される言語のものと一致するかチェック
@@ -533,31 +482,13 @@ window.onload = () => {
                     );
                     
                     if (!itemMatches || actualStatNames.length === 0) {
-                        console.log(`[StarRailExt] 遺物アイテム ${i+1} がまだ言語変更未完了: [${actualStatNames.join(', ')}]`);
                         allItemsReady = false;
                         break;
                     }
                 }
                 
-                console.log(`[StarRailExt] 言語変更チェック詳細:`, {
-                    currentDetectedLang,
-                    totalRelicItems: allRelicItems.length,
-                    allItemsReady,
-                    attempt: attempts
-                });
-                
-                console.log(`[StarRailExt] 期待される${currentDetectedLang}ステータス名: [${Object.values(expectedStatNames).join(', ')}]`);
-                console.log(`[StarRailExt] 実際に見つかったステータス名（重複除去）: [${[...new Set(totalStatNames)].join(', ')}]`);
-                
-                if (!allItemsReady) {
-                    const unexpectedNames = [...new Set(totalStatNames)].filter(name => 
-                        !Object.values(expectedStatNames).includes(name)
-                    );
-                    console.log(`[StarRailExt] 期待言語と一致しないステータス名: [${unexpectedNames.join(', ')}]`);
-                }
                 
                 if (allItemsReady && totalStatNames.length > 0) {
-                    console.log('[StarRailExt] すべての遺物アイテムの言語変更が完了しました');
                     resolve();
                 } else {
                     if (attempts >= maxAttempts) {
@@ -584,7 +515,6 @@ window.onload = () => {
                         const oldLang = mutation.oldValue;
                         const newLang = langSelector.textContent.trim();
                         if (oldLang && newLang && oldLang !== newLang) {
-                            console.log('[StarRailExt] 言語変更を検知:', { from: oldLang, to: newLang });
                             // 言語変更後の再描画処理（メニューが閉じるまで待機）
                             handleLanguageChangeRedraw(oldLang, newLang);
                         }
@@ -642,7 +572,6 @@ window.onload = () => {
         });
     }
 
-    console.log('[StarRailExt]', currentUIStrings.LOG_EXTENSION_START);
     setupLanguageChangeDetection(); // 言語変更検知
     setupBackButtonDetection();
     firstDraw();
