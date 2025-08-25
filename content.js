@@ -416,9 +416,6 @@ window.onload = () => {
             // すべてのc-hrdr-itemが期待する言語になるまで待機
             await waitForRelicItemLanguageChange();
             
-            // 大幅な追加待機（確実にすべて完了するまで）
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            
             draw();
             
         } catch (error) {
@@ -429,22 +426,17 @@ window.onload = () => {
     // すべてのc-hrdr-itemが期待する言語になるまで待機する関数
     function waitForRelicItemLanguageChange() {
         return new Promise((resolve, reject) => {
-            const maxAttempts = 20;
-            let attempts = 0;
+            const timeout = setTimeout(() => {
+                observer.disconnect();
+                console.warn('[StarRailExt] 言語変更チェックがタイムアウトしました');
+                resolve();
+            }, config.TIMEOUTS.ELEMENT_WAIT);
             
             const checkLanguage = () => {
-                attempts++;
-                
                 // すべての遺物アイテムを取得
                 const allRelicItems = document.querySelectorAll(SELECTORS.RELIC_ITEM);
                 if (!allRelicItems || allRelicItems.length === 0) {
-                    if (attempts >= maxAttempts) {
-                        console.warn('[StarRailExt] 言語変更チェックがタイムアウトしました');
-                        resolve();
-                        return;
-                    }
-                    setTimeout(checkLanguage, 300);
-                    return;
+                    return false;
                 }
                 
                 const currentDetectedLang = config.getCurrentLanguage();
@@ -487,20 +479,44 @@ window.onload = () => {
                     }
                 }
                 
-                
                 if (allItemsReady && totalStatNames.length > 0) {
+                    clearTimeout(timeout);
+                    observer.disconnect();
                     resolve();
-                } else {
-                    if (attempts >= maxAttempts) {
-                        console.warn('[StarRailExt] 言語変更チェックがタイムアウトしました');
-                        resolve();
-                    } else {
-                        setTimeout(checkLanguage, 300);
-                    }
+                    return true;
                 }
+                return false;
             };
             
-            checkLanguage();
+            // 初回チェック
+            if (checkLanguage()) {
+                return;
+            }
+            
+            // MutationObserverで変更を監視
+            const observer = new MutationObserver((mutations) => {
+                for (const mutation of mutations) {
+                    // 拡張機能自体の変更は無視
+                    if (mutation.target.classList && mutation.target.classList.contains(config.MY_CLASS)) {
+                        continue;
+                    }
+                    
+                    // 遺物関連の変更をチェック
+                    if (mutation.type === 'childList' || 
+                        (mutation.type === 'characterData' && 
+                         mutation.target.parentElement && 
+                         mutation.target.parentElement.closest(SELECTORS.STAT_NAME))) {
+                        checkLanguage();
+                    }
+                }
+            });
+            
+            // document全体を監視（subtree: trueで子要素の変更も監視）
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true,
+                characterData: true
+            });
         });
     }
 
