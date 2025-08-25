@@ -362,6 +362,47 @@ window.onload = () => {
         }
     }
 
+    // HoyoLab戻るボタン検知のための監視設定
+    function setupBackButtonDetection() {
+        let isRedrawing = false; // 再描画中フラグ
+        
+        // 戻るボタン後のDOM要素待機と再初期化
+        async function handleBackNavigation() {
+            if (isRedrawing) {
+                return;
+            }
+            
+            isRedrawing = true;
+            try {
+                await firstDraw();
+            } catch (error) {
+                console.error('戻るボタン後の再描画エラー:', error);
+            } finally {
+                // 500ms後にフラグをリセット（次の戻るボタンに備える）
+                setTimeout(() => {
+                    isRedrawing = false;
+                }, 500);
+            }
+        }
+        
+        // popstateイベント監視（SPAナビゲーション検知）
+        window.addEventListener('popstate', (event) => {
+            // 戦績画面かチェック
+            if (location.href.includes('/hsr')) {
+                handleBackNavigation();
+            }
+        });
+        
+        // hashchangeイベント監視（URLハッシュ変更検知）
+        window.addEventListener('hashchange', (event) => {
+            // 戦績画面かチェック
+            if (event.newURL.includes('/hsr')) {
+                handleBackNavigation();
+            }
+        });
+    }
+
     console.log(config.UI_STRINGS.LOG_EXTENSION_START);
+    setupBackButtonDetection();
     firstDraw();
 };
