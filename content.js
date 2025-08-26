@@ -109,6 +109,11 @@ window.onload = () => {
     
     // 監視のコールバック
     const callback = (mutationsList, observer) => {
+        console.log('[StarRailExt] DEBUG: Observer callback called, observer type:', 
+            observer === characterInfoElementObserver ? 'characterInfoElementObserver' :
+            observer === bodyElementObserver ? 'bodyElementObserver' :
+            observer === liteModeElementObserver ? 'liteModeElementObserver' :
+            observer === langElementObserver ? 'langElementObserver' : 'unknown');
         // キャラクター変更の場合、デバウンス処理を適用
         if(observer === characterInfoElementObserver) {
             // デバウンス: 50ms内の連続変更は最後のもののみ処理
@@ -119,8 +124,8 @@ window.onload = () => {
                 if(characterNameElement){
                     const characterName = characterNameElement.textContent.trim();
                     console.log('[StarRailExt] DEBUG: キャラクター名検知:', characterName, 'vs', lastCharacterName);
-                    if(characterName && lastCharacterName != characterName){
-                        console.log('[StarRailExt] DEBUG: キャラクター変更確定 ->', characterName);
+                    if(characterName){
+                        console.log('[StarRailExt] DEBUG: キャラクター検知による再描画 ->', characterName);
                         lastCharacterName = characterName;
                         reDraw();
                     }
@@ -160,10 +165,20 @@ window.onload = () => {
                 const oldClassString = mutation.oldValue || '';
                 const oldClassList = oldClassString.split(' ').filter(Boolean);
                 const className = config.MONITOR_CLASSES.PC_ROLE_LITE;
+                
+                console.log('[StarRailExt] DEBUG: oldClassList:', oldClassList);
+                console.log('[StarRailExt] DEBUG: className:', className);
+                console.log('[StarRailExt] DEBUG: oldClassList.includes(className):', oldClassList.includes(className));
+                console.log('[StarRailExt] DEBUG: !mutation.target.classList.contains(className):', !mutation.target.classList.contains(className));
+                console.log('[StarRailExt] DEBUG: mutation.target:', mutation.target);
+                console.log('[StarRailExt] DEBUG: mutation.target.parentElement:', mutation.target.parentElement);
+                console.log('[StarRailExt] DEBUG: characterInfoElement:', characterInfoElement);
+                console.log('[StarRailExt] DEBUG: mutation.target.parentElement === characterInfoElement:', mutation.target.parentElement === characterInfoElement);
+                
                 // カスタムサブステータスを閉じたとき（=liteがなくなったとき）
                 if(oldClassList.includes(className) 
                     && !mutation.target.classList.contains(className)
-                    && mutation.target.parentElement === characterInfoElement
+                    && mutation.target.classList.contains('pc-role-detail')
                 ){
                     console.log('[StarRailExt] DEBUG: 簡略モード解除確定');
                     reDraw();
@@ -171,6 +186,38 @@ window.onload = () => {
             }
         }
     };
+
+    // デバッグ用：全てのクラス変更を監視
+    function debugAllClassChanges() {
+        const debugObserver = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                    const oldClassString = mutation.oldValue || '';
+                    const newClassString = mutation.target.classList.toString();
+                    console.log('[StarRailExt] DEBUG: クラス変更検知:', {
+                        element: mutation.target,
+                        tagName: mutation.target.tagName,
+                        oldClass: oldClassString,
+                        newClass: newClassString,
+                        containsLiteClass: newClassString.includes('pc-role-lite')
+                    });
+                }
+            });
+        });
+        
+        debugObserver.observe(document.body, {
+            attributes: true,
+            subtree: true,
+            attributeOldValue: true,
+            attributeFilter: ['class']
+        });
+        
+        // 10秒後に自動停止
+        setTimeout(() => {
+            debugObserver.disconnect();
+            console.log('[StarRailExt] DEBUG: デバッグObserver停止');
+        }, 10000);
+    }
 
     // 監視を再設定する関数
     function setObservers() {
@@ -191,10 +238,12 @@ window.onload = () => {
         // 簡略モード
         if(liteModeElementObserver){
             liteModeElementObserver.disconnect();
+            console.log('[StarRailExt] DEBUG: liteModeElementObserver disconnected');
         }
         liteModeElementObserver = new MutationObserver(callback);
         liteModeElementObserver.observe(bodyElement, 
             config.OBSERVER_OPTIONS.LITE_MODE);
+        console.log('[StarRailExt] DEBUG: liteModeElementObserver set up, observing:', bodyElement);
     }
 
     // スコアを計算し返す
@@ -434,6 +483,8 @@ window.onload = () => {
         try {
             await setup();
             draw();
+            // デバッグ用のクラス変更監視を開始
+            debugAllClassChanges();
         } catch (error) {
             console.error('[StarRailExt]', currentUIStrings.LOG_ERROR_PREFIX, error);
         }
