@@ -68,6 +68,8 @@ window.onload = () => {
     let bodyElementObserver;
     // 簡略モードの監視オブジェクト
     let liteModeElementObserver;
+    // 言語変更待機の監視オブジェクト
+    let languageChangeWaitObserver;
 
     // 汎用的な要素待機関数
     function waitForElement(selector, validate = (el) => !!el, 
@@ -113,10 +115,13 @@ window.onload = () => {
             if(observer === characterInfoElementObserver 
                 && (mutation.type === 'childList' || mutation.type === 'attributes')
             ){
+                console.log('[StarRailExt] DEBUG: characterInfoElementObserver 変更検知');
                 const characterNameElement = mutation.target.querySelector(SELECTORS.CHARACTER_NAME);
                 if(characterNameElement){
                     const characterName = characterNameElement.textContent.trim();
+                    console.log('[StarRailExt] DEBUG: キャラクター名検知:', characterName, 'vs', lastCharacterName);
                     if(characterName && lastCharacterName != characterName){
+                        console.log('[StarRailExt] DEBUG: キャラクター変更確定 ->', characterName);
                         lastCharacterName = characterName;
                         reDraw();
                     }
@@ -127,6 +132,7 @@ window.onload = () => {
                 && mutation.type === 'attributes' 
                 && mutation.attributeName  === 'class'
             ){
+                console.log('[StarRailExt] DEBUG: bodyElementObserver クラス変更検知');
                 const oldClassString = mutation.oldValue || '';
                 const oldClassList = oldClassString.split(' ').filter(Boolean);
                 const className = config.MONITOR_CLASSES.VAN_OVERFLOW_HIDDEN;
@@ -134,6 +140,7 @@ window.onload = () => {
                 if(oldClassList.includes(className) 
                     && !mutation.target.classList.contains(className)
                 ){
+                    console.log('[StarRailExt] DEBUG: カスタムサブステータス変更確定');
                     reDraw();
                 }
             }
@@ -142,6 +149,7 @@ window.onload = () => {
                 && mutation.type === 'attributes' 
                 && mutation.attributeName  === 'class'
             ){
+                console.log('[StarRailExt] DEBUG: liteModeElementObserver クラス変更検知');
                 const oldClassString = mutation.oldValue || '';
                 const oldClassList = oldClassString.split(' ').filter(Boolean);
                 const className = config.MONITOR_CLASSES.PC_ROLE_LITE;
@@ -150,6 +158,7 @@ window.onload = () => {
                     && !mutation.target.classList.contains(className)
                     && mutation.target.parentElement === characterInfoElement
                 ){
+                    console.log('[StarRailExt] DEBUG: 簡略モード解除確定');
                     reDraw();
                 }
             }
@@ -275,14 +284,19 @@ window.onload = () => {
 
     // 描画
     function draw(){
+        console.log('[StarRailExt] DEBUG: draw() 開始');
+        
         // 言語設定を最新に更新
         updateLanguageSettings();
+        console.log('[StarRailExt] DEBUG: 言語設定更新完了:', currentUIStrings.SCORE_LABEL);
         
         if (!characterInfoElement) {
+            console.log('[StarRailExt] ERROR: characterInfoElement が null');
             console.log('[StarRailExt]', currentUIStrings.ERROR_NO_RELIC_LIST);
             return;
         }
         if (!scoreComponent) {
+            console.log('[StarRailExt] ERROR: scoreComponent が null');
             console.log('[StarRailExt]', currentUIStrings.ERROR_NO_SCORE_COMPONENT);
             return;
         }
@@ -290,31 +304,37 @@ window.onload = () => {
         // DOM要素を完全に再取得（言語変更後の更新のため）
         const freshCharacterInfo = document.querySelector(SELECTORS.MAIN_CONTENT);
         if (!freshCharacterInfo) {
-            console.warn('[StarRailExt] メインコンテンツが見つかりません');
+            console.warn('[StarRailExt] ERROR: メインコンテンツが見つかりません');
             return;
         }
+        console.log('[StarRailExt] DEBUG: DOM要素再取得完了');
         
         // characterInfoElementを更新
         characterInfoElement = freshCharacterInfo;
         
+        console.log('[StarRailExt] DEBUG: 前回のスコア要素削除開始');
         scoreComponent.removeAllScoreElements(characterInfoElement, config.MY_CLASS);
         
         // 遺物要素
         const relicElements = characterInfoElement.querySelectorAll(SELECTORS.RELIC_ITEM);
+        console.log('[StarRailExt] DEBUG: 遺物要素数:', relicElements.length);
         // 遺物を1つも装備していない場合は描画しない
         if(relicElements.length == 0){
+            console.log('[StarRailExt] DEBUG: 遺物要素なし - 描画終了');
             return;
         }
         
         let totalScore = 0;
         
         // 遺物の数だけスコア描画
+        console.log('[StarRailExt] DEBUG: スコア計算開始');
         for(let i = 0; i < relicElements.length; i++){
             const parent = relicElements[i];
             const firstItem = parent.querySelector(SELECTORS.STAT_ITEM);
             const backgroundColor = window.getComputedStyle(firstItem)['background-color'];
             const score = calculateScore(parent);
             totalScore += score;
+            console.log('[StarRailExt] DEBUG: 遺物', (i+1), 'スコア:', score);
             
             const relicScoreElement = scoreComponent.createRelicScoreElement(
                 score, backgroundColor, firstItem, SELECTORS, {
@@ -351,10 +371,18 @@ window.onload = () => {
             const relicListElement = characterInfoElement.querySelector(SELECTORS.RELIC_BOTTOM_AREA);
             relicListElement.parentNode.append(totalScoreElement);
         }
+        
+        // DOM要素が更新されたのでObserverを再設定
+        console.log('[StarRailExt] DEBUG: Observer再設定開始');
+        setObservers();
+        console.log('[StarRailExt] DEBUG: Observer再設定完了');
+        
+        console.log('[StarRailExt] DEBUG: draw() 完了 - 合計スコア:', totalScore);
     }
 
     // 非同期処理を分離
     async function reDraw() {
+        console.log('[StarRailExt] DEBUG: reDraw() 呼び出し');
         draw();
     }
 
@@ -406,16 +434,20 @@ window.onload = () => {
 
     // 言語変更後の再描画処理（最初のc-hrdr-itemが期待言語になるまで待機）
     async function handleLanguageChangeRedraw(fromLang, toLang) {
+        console.log('[StarRailExt] DEBUG: handleLanguageChangeRedraw() 開始:', fromLang, '->', toLang);
         
         try {
             // 現在のページが戦績画面かチェック
             if (!location.href.includes('/hsr')) {
+                console.log('[StarRailExt] DEBUG: 戦績画面以外のため処理終了');
                 return;
             }
             
+            console.log('[StarRailExt] DEBUG: 言語変更待機開始');
             // すべてのc-hrdr-itemが期待する言語になるまで待機
             await waitForRelicItemLanguageChange();
             
+            console.log('[StarRailExt] DEBUG: 言語変更後のdraw()実行');
             draw();
             
         } catch (error) {
@@ -425,9 +457,20 @@ window.onload = () => {
     
     // すべてのc-hrdr-itemが期待する言語になるまで待機する関数
     function waitForRelicItemLanguageChange() {
+        console.log('[StarRailExt] DEBUG: waitForRelicItemLanguageChange() 開始');
         return new Promise((resolve, reject) => {
+            // 既存のObserverがあればクリーンアップ
+            if (languageChangeWaitObserver) {
+                console.log('[StarRailExt] DEBUG: 既存の言語変更待機Observer切断');
+                languageChangeWaitObserver.disconnect();
+                languageChangeWaitObserver = null;
+            }
+            
             const timeout = setTimeout(() => {
-                observer.disconnect();
+                if (languageChangeWaitObserver) {
+                    languageChangeWaitObserver.disconnect();
+                    languageChangeWaitObserver = null;
+                }
                 console.warn('[StarRailExt] 言語変更チェックがタイムアウトしました');
                 resolve();
             }, config.TIMEOUTS.ELEMENT_WAIT);
@@ -480,8 +523,12 @@ window.onload = () => {
                 }
                 
                 if (allItemsReady && totalStatNames.length > 0) {
+                    console.log('[StarRailExt] DEBUG: 言語変更完了検知');
                     clearTimeout(timeout);
-                    observer.disconnect();
+                    if (languageChangeWaitObserver) {
+                        languageChangeWaitObserver.disconnect();
+                        languageChangeWaitObserver = null;
+                    }
                     resolve();
                     return true;
                 }
@@ -489,12 +536,14 @@ window.onload = () => {
             };
             
             // 初回チェック
+            console.log('[StarRailExt] DEBUG: 言語変更初回チェック');
             if (checkLanguage()) {
+                console.log('[StarRailExt] DEBUG: 初回チェックで言語変更完了');
                 return;
             }
             
             // MutationObserverで変更を監視
-            const observer = new MutationObserver((mutations) => {
+            languageChangeWaitObserver = new MutationObserver((mutations) => {
                 for (const mutation of mutations) {
                     // 拡張機能自体の変更は無視
                     if (mutation.target.classList && mutation.target.classList.contains(config.MY_CLASS)) {
@@ -512,7 +561,7 @@ window.onload = () => {
             });
             
             // document全体を監視（subtree: trueで子要素の変更も監視）
-            observer.observe(document.body, {
+            languageChangeWaitObserver.observe(document.body, {
                 childList: true,
                 subtree: true,
                 characterData: true
