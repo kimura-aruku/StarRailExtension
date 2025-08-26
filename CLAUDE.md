@@ -123,13 +123,8 @@
 </div>
 ```
 
-**監視対象要素:**
-- `.pc-swiper-block-layout__content` - キャラクター切り替え検知のため監視
-- `.c-hrd-ri-name` - キャラクター名変更の検知
-- `.pc-role-detail-num` - カスタムサブステータス変更と簡略モード解除の検知
-- `.mhy-hoyolab-lang-selector__current-lang` - 言語設定変更の検知（JP/EN切り替え）
-- `window.popstate` - SPAナビゲーション（戻るボタン）の検知
-- `window.hashchange` - URLハッシュ変更の検知
+**監視システム概要:**
+この拡張機能は6つの監視対象で動的変更を検知し、適切な再描画処理を実行します。
 
 **スコア計算対象要素:**
 - `.c-hrdr-item` - 各遺物のスコア計算
@@ -153,6 +148,7 @@
 - 日本語文字列を使用し、現在は日本語のみ対応
 - 注入される全ての要素は識別とクリーンアップのためにCSSクラス`alk-element`を使用
 - 動的コンテンツの読み込みとユーザー操作を処理するためにmutation observerを使用
+- `.c-hrdr-btm` の中の1つ目の `.c-hrdr-btm-item` はメインステータスのためスコア算出の対象外
 
 ## 改善点
 
@@ -202,3 +198,226 @@ console.error('[StarRailExt] エラーメッセージ');
 - エラーログ（console.error）は残す
 - 重要な状態変更のログは残す（言語変更完了など）
 - デバッグ用の詳細ログ（DEBUG接頭語付き）は削除する
+
+## content.jsの詳細仕様
+
+### 関数構造と責任
+
+**重要**: 以下の関数構造は動作確認済みのため、**リファクタリング時は絶対に分割・変更してはならない**
+
+#### 初期化系関数
+- **`setup()`**: 
+  - DOM要素取得（characterInfoElement, bodyElement）
+  - スタイル取得（labelStyleObject, numberStyleObject, descriptionStyleObject）
+  - MutationObserver設定
+  - **責任**: 拡張機能の完全な初期化
+  
+- **`firstDraw()`**: 
+  - setup()呼び出し → draw()呼び出し
+  - エラーハンドリング
+  - **責任**: 拡張機能の初回起動エントリーポイント
+
+#### 描画系関数
+- **`draw()`**: 
+  - 言語設定更新（updateLanguageSettings()）
+  - DOM要素完全再取得（characterInfoElement更新）
+  - 前回スコア要素削除
+  - 新しいスコア要素作成・配置
+  - **責任**: スコア描画の完全な処理（**DOM再取得必須**）
+  
+- **`reDraw()`**: 
+  - draw()のラッパー（非同期対応）
+  - **責任**: キャラ変更・設定変更時の再描画
+
+#### 言語変更処理
+- **`handleLanguageChangeRedraw()`**: 
+  - ページ確認 → waitForRelicItemLanguageChange() → draw()
+  - **責任**: 言語変更後の再描画制御
+  
+- **`waitForRelicItemLanguageChange()`**: 
+  - MutationObserver使用による効率的な言語変更検知
+  - DOM変更を直接監視（300msポーリング廃止済み）
+  - **責任**: 言語変更完了の確実な検知
+
+### 実行フローと処理順序
+
+#### 初期化フロー
+```
+window.onload → firstDraw() → setup() → draw()
+                                ↓
+                        DOM要素取得・スタイル取得・Observer設定
+```
+
+#### キャラ変更フロー
+```
+キャラクター選択（ユーザー操作）
+          ↓
+`.c-hrd-ri-name` 要素のテキスト変更
+          ↓
+characterInfoElementObserver 検知
+          ↓
+callback() → 文字列比較（lastCharacterName != characterName）
+          ↓
+lastCharacterName 更新 → reDraw() → draw()
+                                    ↓
+                          DOM再取得・スコア再計算・新キャラ表示
+```
+
+#### 言語変更フロー
+```
+言語セレクター変更検知 → handleLanguageChangeRedraw() 
+                            ↓
+                    waitForRelicItemLanguageChange()
+                            ↓
+                        draw()（DOM再取得・再描画）
+```
+
+#### カスタムサブステータス変更フロー
+```
+ユーザーがカスタムサブステータスボタンをクリック
+          ↓
+カスタムサブステータスパネルが開く
+          ↓
+ユーザーがサブステータス設定を変更
+          ↓
+パネルを閉じる（×ボタンまたは外側クリック）
+          ↓
+bodyElement に VAN_OVERFLOW_HIDDEN クラスが削除
+          ↓
+bodyElementObserver 検知
+          ↓
+callback() → attributes変更 && attributeName === 'class' 判定
+          ↓
+oldClassList に VAN_OVERFLOW_HIDDEN 含む && 現在含まない 判定
+          ↓
+reDraw() → draw()
+          ↓
+DOM再取得・新しいサブステータス設定でスコア再計算
+```
+
+#### 簡略モード変更フロー
+```
+ユーザーが「数値」「簡略」切り替えボタンをクリック
+          ↓
+bodyElement の PC_ROLE_LITE クラスが追加/削除
+          ↓
+liteModeElementObserver 検知
+          ↓
+callback() → attributes変更 && attributeName === 'class' 判定
+          ↓
+簡略→数値モード: oldClassList に PC_ROLE_LITE 含む && 現在含まない
+          ↓
+reDraw() → draw()
+          ↓
+DOM再取得・数値モードでスコア表示再開
+```
+
+#### SPAナビゲーション（戻るボタン）フロー
+```
+ユーザーが戻るボタンクリック/URLハッシュ変更
+          ↓
+window.popstate または window.hashchange イベント発火
+          ↓
+handleBackNavigation() → URL判定（/hsr 含む？）
+          ↓                      ↓
+   Yes（戦績画面）            No（他画面）
+          ↓                      ↓
+   isRedrawing フラグチェック    処理終了
+          ↓
+   フラグ設定 → firstDraw() → setup() + draw()
+          ↓                           ↓
+   500ms後フラグリセット          完全再初期化・再描画
+```
+
+### 重要な変数とDOM管理
+
+#### グローバル変数の役割
+- **`characterInfoElement`**: メインコンテナDOM参照（draw()で毎回更新必須）
+- **`bodyElement`**: 監視用全体DOM参照
+- **`scoreComponent`**: スコア要素作成インスタンス
+- **`lastCharacterName`**: キャラ変更検知用
+- **`*StyleObject`**: 元ページスタイル継承用（初期化時取得）
+
+#### DOM要素更新の重要性
+**`draw()`関数内でのDOM要素再取得は必須**:
+- 言語変更後はDOM構造が変わる
+- characterInfoElementを最新状態に更新
+- 古いDOM参照では要素が見つからない
+
+### 監視システムの詳細構成
+
+#### MutationObserver（DOM変更監視）
+
+1. **`characterInfoElementObserver`**: キャラクター切り替え検知
+   - **対象**: `characterInfoElement` （`.pc-swiper-block-layout__content`）
+   - **監視内容**: childList, attributes変更
+   - **検知ロジック**: `.c-hrd-ri-name` 要素からキャラクター名取得 → `lastCharacterName` と比較
+   - **トリガー**: 名前が異なる場合 → `lastCharacterName` 更新 → `reDraw()`実行
+   - **重要**: キャラクター切り替えの主要検知メカニズム
+
+2. **`bodyElementObserver`**: カスタムサブステータス設定変更検知  
+   - **対象**: `bodyElement`のclass属性変更
+   - **監視内容**: attributes変更（class属性のみ）
+   - **検知ロジック**: `VAN_OVERFLOW_HIDDEN` クラスの削除タイミングを監視
+   - **トリガー**: カスタムサブステータスパネルを閉じた時 → `reDraw()`実行
+
+3. **`liteModeElementObserver`**: 簡略モード解除検知
+   - **対象**: `bodyElement`のclass属性変更
+   - **監視内容**: attributes変更（class属性のみ）
+   - **検知ロジック**: `PC_ROLE_LITE` クラスの削除タイミングを監視
+   - **トリガー**: 数値表示モードに切り替わった時 → `reDraw()`実行
+
+4. **`languageObserver`**: 言語設定変更検知
+   - **対象**: `.mhy-hoyolab-lang-selector__current-lang`
+   - **監視内容**: childList, characterData, subtree変更
+   - **検知ロジック**: 言語表示文字の内容変更を監視
+   - **トリガー**: JP↔EN切り替え時 → `handleLanguageChangeRedraw()`実行
+
+#### Windowイベント（SPAナビゲーション監視）
+
+5. **`window.popstate`**: 戻るボタン・進むボタン検知
+   - **対象**: ブラウザの履歴変更
+   - **検知ロジック**: popstateイベント発火 + URL に `/hsr` 含むかチェック
+   - **トリガー**: 戦績画面に戻った時 → `handleBackNavigation()`実行
+   - **処理内容**: `isRedrawing`フラグで重複防止 + `firstDraw()`による完全再初期化
+   - **重要**: SPA内での戻るボタン操作の主要検知メカニズム
+
+6. **`window.hashchange`**: URLハッシュ変更検知
+   - **対象**: URLのハッシュ部分（#以降）の変更
+   - **検知ロジック**: hashchangeイベント発火 + 新URL に `/hsr` 含むかチェック
+   - **トリガー**: ハッシュルートで戦績画面に遷移した時 → `handleBackNavigation()`実行
+   - **重要**: SPA内のルート変更による戦績画面復帰を検知
+
+### 動作保証要件
+
+#### 必須動作確認項目
+- **初期化**: 日本語環境での正常なスコア表示
+- **キャラ変更**: 即座のスコア再計算・再表示
+- **言語変更**: JP↔EN切り替え後の正常動作
+- **設定変更**: カスタムサブステータス・簡略モード変更対応
+
+#### リファクタリング時の注意事項
+- ⚠️ `draw()`, `reDraw()`, `setup()`, `firstDraw()`の分割は将来的な課題（動作保証を優先）
+- ❌ DOM要素再取得ロジックの変更（言語変更対応のため必須）
+- ❌ 非同期処理（waitForRelicItemLanguageChange）の変更（パフォーマンス最適化済み）
+- ❌ MutationObserver設定の変更（検知精度に影響）
+- ❌ 言語設定更新タイミングの変更（描画前更新必須）
+
+#### 将来のリファクタリング課題
+- **関数責任分離**: 単一責任原則に基づく適切な分割
+- **テスト導入**: 動作保証のためのテストファーストアプローチ
+- **段階的移行**: 小さな変更を積み重ねる安全なリファクタリング
+
+### エラーパターンと対処法
+
+#### よくある失敗ケース
+1. **「Score表記で日本語にならない」**: 言語設定更新忘れ
+2. **「スコアが0になる」**: DOM要素の古い参照使用
+3. **「キャラ変更で再描画されない」**: reDraw()の関数名間違い
+4. **「言語変更後に動作停止」**: 存在しない関数呼び出し
+
+#### デバッグ時の確認点
+- Console で `[StarRailExt]` ログの確認
+- `characterInfoElement` の最新性確認
+- `currentUIStrings`, `currentStatNames` の値確認
+- DOM要素の存在確認（querySelector結果）
