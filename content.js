@@ -104,19 +104,18 @@ window.onload = () => {
         return waitForElement(SELECTORS.ROLE_DETAIL_NUM, null);
     }
 
+    // デバウンス用のタイマー
+    let characterChangeDebounceTimer;
+    
     // 監視のコールバック
     const callback = (mutationsList, observer) => {
-        for (let mutation of mutationsList) {
-            if (mutation.target.classList && 
-                    mutation.target.classList.contains(MY_CLASS)) {
-                continue;
-            }
-            // キャラ選択
-            if(observer === characterInfoElementObserver 
-                && (mutation.type === 'childList' || mutation.type === 'attributes')
-            ){
-                console.log('[StarRailExt] DEBUG: characterInfoElementObserver 変更検知');
-                const characterNameElement = mutation.target.querySelector(SELECTORS.CHARACTER_NAME);
+        // キャラクター変更の場合、デバウンス処理を適用
+        if(observer === characterInfoElementObserver) {
+            // デバウンス: 50ms内の連続変更は最後のもののみ処理
+            clearTimeout(characterChangeDebounceTimer);
+            characterChangeDebounceTimer = setTimeout(() => {
+                console.log('[StarRailExt] DEBUG: characterInfoElementObserver デバウンス後処理');
+                const characterNameElement = characterInfoElement.querySelector(SELECTORS.CHARACTER_NAME);
                 if(characterNameElement){
                     const characterName = characterNameElement.textContent.trim();
                     console.log('[StarRailExt] DEBUG: キャラクター名検知:', characterName, 'vs', lastCharacterName);
@@ -126,9 +125,17 @@ window.onload = () => {
                         reDraw();
                     }
                 }
+            }, 50);
+            return;
+        }
+        
+        for (let mutation of mutationsList) {
+            if (mutation.target.classList && 
+                    mutation.target.classList.contains(MY_CLASS)) {
+                continue;
             } 
             // カスタムサブステータス
-            else if(observer === bodyElementObserver 
+            if(observer === bodyElementObserver 
                 && mutation.type === 'attributes' 
                 && mutation.attributeName  === 'class'
             ){
