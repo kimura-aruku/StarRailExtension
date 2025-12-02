@@ -207,35 +207,49 @@ console.error('[StarRailExt] エラーメッセージ');
 **重要**: 以下の関数構造は動作確認済みのため、**リファクタリング時は絶対に分割・変更してはならない**
 
 #### 初期化系関数
-- **`setup()`**: 
+- **`setup()`**:
   - DOM要素取得（characterInfoElement, bodyElement）
   - スタイル取得（labelStyleObject, numberStyleObject, descriptionStyleObject）
   - MutationObserver設定
   - **責任**: 拡張機能の完全な初期化
-  
-- **`firstDraw()`**: 
+
+- **`firstDraw()`**:
   - setup()呼び出し → draw()呼び出し
   - エラーハンドリング
+  - 初期化完了後100ms待機してからObserver有効化（`isInitializing = false`）
   - **責任**: 拡張機能の初回起動エントリーポイント
 
+#### 検知設定関数
+- **`setupLanguageChangeDetection()`**:
+  - 言語セレクター要素の監視設定
+  - **責任**: 言語変更イベントの検知設定
+
+- **`setupBackButtonDetection()`**:
+  - `popstate`と`hashchange`イベントリスナー設定
+  - **責任**: SPAナビゲーション（戻る/進む/ハッシュ変更）の検知設定
+
+- **`setupMainContentExistenceDetection()`**:
+  - `.pc-swiper-block-layout__content`の再構築監視設定
+  - **責任**: 全キャラクター画面からの遷移検知設定
+
 #### 描画系関数
-- **`draw()`**: 
+- **`draw()`**:
   - 言語設定更新（updateLanguageSettings()）
   - DOM要素完全再取得（characterInfoElement更新）
   - 前回スコア要素削除
   - 新しいスコア要素作成・配置
   - **責任**: スコア描画の完全な処理（**DOM再取得必須**）
-  
-- **`reDraw()`**: 
+
+- **`reDraw()`**:
   - draw()のラッパー（非同期対応）
   - **責任**: キャラ変更・設定変更時の再描画
 
 #### 言語変更処理
-- **`handleLanguageChangeRedraw()`**: 
+- **`handleLanguageChangeRedraw()`**:
   - ページ確認 → waitForRelicItemLanguageChange() → draw()
   - **責任**: 言語変更後の再描画制御
-  
-- **`waitForRelicItemLanguageChange()`**: 
+
+- **`waitForRelicItemLanguageChange()`**:
   - MutationObserver使用による効率的な言語変更検知
   - DOM変更を直接監視（300msポーリング廃止済み）
   - **責任**: 言語変更完了の確実な検知
@@ -330,14 +344,53 @@ handleBackNavigation() → URL判定（/hsr 含む？）
    500ms後フラグリセット          完全再初期化・再描画
 ```
 
+#### 全キャラクター画面からのキャラクター選択フロー
+```
+ユーザーが「全キャラクター」ボタンをクリック
+          ↓
+全キャラクター画面が表示される
+          ↓
+ユーザーがキャラクターを選択
+          ↓
+`.pc-swiper-block-layout__content` が再構築される
+          ↓
+mainContentExistenceObserver 検知
+          ↓
+callback() → isInitializing チェック（初期化中は無視）
+          ↓
+メインコンテンツ追加検知 → デバウンス処理（50ms）
+          ↓
+isInitializing = true → firstDraw()
+          ↓
+setup() + draw() → 完全再初期化・スコア表示
+          ↓
+100ms後 isInitializing = false
+          ↓
+characterInfoElementObserver がキャラ名変更を検知
+          ↓
+lastCharacterName 更新 → reDraw() → draw()
+          ↓
+最終的なスコア表示完了
+```
+
 ### 重要な変数とDOM管理
 
 #### グローバル変数の役割
 - **`characterInfoElement`**: メインコンテナDOM参照（draw()で毎回更新必須）
-- **`bodyElement`**: 監視用全体DOM参照
+- **`bodyElement`**: 監視用全体DOM参照（`.pc-role-detail-num`）
 - **`scoreComponent`**: スコア要素作成インスタンス
 - **`lastCharacterName`**: キャラ変更検知用
 - **`*StyleObject`**: 元ページスタイル継承用（初期化時取得）
+- **`isInitializing`**: 初期化状態管理フラグ（初期化中はObserverが反応しないようにする）
+- **`characterChangeDebounceTimer`**: キャラクター変更デバウンス用タイマー（50ms）
+- **`mainContentChangeDebounceTimer`**: メインコンテンツ再構築デバウンス用タイマー（50ms）
+
+#### Observer変数
+- **`characterInfoElementObserver`**: キャラクター切り替え検知用
+- **`bodyElementObserver`**: カスタムサブステータス変更検知用
+- **`liteModeElementObserver`**: 簡略モード切り替え検知用
+- **`languageChangeWaitObserver`**: 言語変更待機用（一時的）
+- **`mainContentExistenceObserver`**: 全キャラクター画面遷移検知用
 
 #### DOM要素更新の重要性
 **`draw()`関数内でのDOM要素再取得は必須**:
@@ -356,11 +409,12 @@ handleBackNavigation() → URL判定（/hsr 含む？）
    - **トリガー**: 名前が異なる場合 → `lastCharacterName` 更新 → `reDraw()`実行
    - **重要**: キャラクター切り替えの主要検知メカニズム
 
-2. **`bodyElementObserver`**: カスタムサブステータス設定変更検知  
-   - **対象**: `bodyElement`のclass属性変更
+2. **`bodyElementObserver`**: カスタムサブステータス設定変更検知
+   - **対象**: `document.body`のclass属性変更
    - **監視内容**: attributes変更（class属性のみ）
    - **検知ロジック**: `VAN_OVERFLOW_HIDDEN` クラスの削除タイミングを監視
    - **トリガー**: カスタムサブステータスパネルを閉じた時 → `reDraw()`実行
+   - **重要**: `bodyElement`変数（`.pc-role-detail-num`）ではなく、`document.body`を直接監視
 
 3. **`liteModeElementObserver`**: 簡略モード解除検知
    - **対象**: `bodyElement`のclass属性変更
@@ -374,16 +428,24 @@ handleBackNavigation() → URL判定（/hsr 含む？）
    - **検知ロジック**: 言語表示文字の内容変更を監視
    - **トリガー**: JP↔EN切り替え時 → `handleLanguageChangeRedraw()`実行
 
+5. **`mainContentExistenceObserver`**: 全キャラクター画面遷移検知
+   - **対象**: `.pc-swiper-block-layout` または `document.body`
+   - **監視内容**: childList, subtree変更
+   - **検知ロジック**: `.pc-swiper-block-layout__content` の追加を監視
+   - **トリガー**: 全キャラクター画面からキャラ選択時 → デバウンス50ms後 → `firstDraw()`による完全再初期化
+   - **フェイルセーフ**: `isInitializing = true` の間は反応しない
+   - **重要**: 全キャラクター画面からの遷移でDOM全体が再構築されるため、完全な再初期化が必要
+
 #### Windowイベント（SPAナビゲーション監視）
 
-5. **`window.popstate`**: 戻るボタン・進むボタン検知
+6. **`window.popstate`**: 戻るボタン・進むボタン検知
    - **対象**: ブラウザの履歴変更
    - **検知ロジック**: popstateイベント発火 + URL に `/hsr` 含むかチェック
    - **トリガー**: 戦績画面に戻った時 → `handleBackNavigation()`実行
    - **処理内容**: `isRedrawing`フラグで重複防止 + `firstDraw()`による完全再初期化
    - **重要**: SPA内での戻るボタン操作の主要検知メカニズム
 
-6. **`window.hashchange`**: URLハッシュ変更検知
+7. **`window.hashchange`**: URLハッシュ変更検知
    - **対象**: URLのハッシュ部分（#以降）の変更
    - **検知ロジック**: hashchangeイベント発火 + 新URL に `/hsr` 含むかチェック
    - **トリガー**: ハッシュルートで戦績画面に遷移した時 → `handleBackNavigation()`実行
@@ -396,6 +458,8 @@ handleBackNavigation() → URL判定（/hsr 含む？）
 - **キャラ変更**: 即座のスコア再計算・再表示
 - **言語変更**: JP↔EN切り替え後の正常動作
 - **設定変更**: カスタムサブステータス・簡略モード変更対応
+- **全キャラクター画面**: 全キャラクター画面からの選択で正常なスコア表示
+- **SPAナビゲーション**: 戻るボタン・進むボタン・ハッシュ変更での正常動作
 
 #### リファクタリング時の注意事項
 - ⚠️ `draw()`, `reDraw()`, `setup()`, `firstDraw()`の分割は将来的な課題（動作保証を優先）
