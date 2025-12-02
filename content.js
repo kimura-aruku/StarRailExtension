@@ -70,6 +70,8 @@ window.onload = () => {
     let liteModeElementObserver;
     // 言語変更待機の監視オブジェクト
     let languageChangeWaitObserver;
+    // メインコンテンツ存在監視オブジェクト
+    let mainContentExistenceObserver;
 
     // 汎用的な要素待機関数
     function waitForElement(selector, validate = (el) => !!el, 
@@ -121,7 +123,8 @@ window.onload = () => {
                 const characterNameElement = characterInfoElement.querySelector(SELECTORS.CHARACTER_NAME);
                 if(characterNameElement){
                     const characterName = characterNameElement.textContent.trim();
-                    if(characterName){
+                    if(characterName && characterName !== lastCharacterName){
+                        console.log('[StarRailExt] [ALL_CHAR_DEBUG] キャラ変更検知 - 旧:', lastCharacterName, '新:', characterName);
                         lastCharacterName = characterName;
                         reDraw();
                     }
@@ -144,9 +147,10 @@ window.onload = () => {
                 const oldClassList = oldClassString.split(' ').filter(Boolean);
                 const className = config.MONITOR_CLASSES.VAN_OVERFLOW_HIDDEN;
                 // カスタムサブステータスを閉じたとき（=hiddenがなくなったとき）
-                if(oldClassList.includes(className) 
+                if(oldClassList.includes(className)
                     && !mutation.target.classList.contains(className)
                 ){
+                    console.log('[StarRailExt] [ALL_CHAR_DEBUG] カスタムサブステータス変更検知');
                     reDraw();
                 }
             }
@@ -160,10 +164,11 @@ window.onload = () => {
                 const className = config.MONITOR_CLASSES.PC_ROLE_LITE;
                 
                 // カスタムサブステータスを閉じたとき（=liteがなくなったとき）
-                if(oldClassList.includes(className) 
+                if(oldClassList.includes(className)
                     && !mutation.target.classList.contains(className)
                     && mutation.target.classList.contains('pc-role-detail')
                 ){
+                    console.log('[StarRailExt] [ALL_CHAR_DEBUG] 簡略モード解除検知');
                     reDraw();
                 }
             }
@@ -290,10 +295,12 @@ window.onload = () => {
 
     // 描画
     function draw(){
-        
+
+        console.log('[StarRailExt] [ALL_CHAR_DEBUG] draw() 開始 - characterInfoElement:', !!characterInfoElement);
+
         // 言語設定を最新に更新
         updateLanguageSettings();
-        
+
         if (!characterInfoElement) {
             console.log('[StarRailExt] ERROR: characterInfoElement が null');
             console.log('[StarRailExt]', currentUIStrings.ERROR_NO_RELIC_LIST);
@@ -419,11 +426,13 @@ window.onload = () => {
     // スコア要素作成
     async function firstDraw(){
         try {
+            console.log('[StarRailExt] [ALL_CHAR_DEBUG] firstDraw() 開始');
             await setup();
             draw();
             // 初期化完了後、少し待ってからObserverを有効化
             setTimeout(() => {
                 isInitializing = false;
+                console.log('[StarRailExt] [ALL_CHAR_DEBUG] 初期化完了');
             }, 100);
         } catch (error) {
             console.error('[StarRailExt]', currentUIStrings.LOG_ERROR_PREFIX, error);
@@ -432,16 +441,18 @@ window.onload = () => {
 
     // 言語変更後の再描画処理（最初のc-hrdr-itemが期待言語になるまで待機）
     async function handleLanguageChangeRedraw(fromLang, toLang) {
-        
+
         try {
+            console.log('[StarRailExt] [ALL_CHAR_DEBUG] 言語変更検知:', fromLang, '→', toLang);
+
             // 現在のページが戦績画面かチェック
             if (!location.href.includes('/hsr')) {
                 return;
             }
-            
+
             // すべてのc-hrdr-itemが期待する言語になるまで待機
             await waitForRelicItemLanguageChange();
-            
+
             draw();
             
         } catch (error) {
@@ -595,7 +606,9 @@ window.onload = () => {
             if (isRedrawing) {
                 return;
             }
-            
+
+            console.log('[StarRailExt] [ALL_CHAR_DEBUG] SPAナビゲーション検知（戻る/進む/ハッシュ変更）');
+
             isRedrawing = true;
             isInitializing = true; // SPA遷移時も初期化状態に戻す
             try {
@@ -627,7 +640,42 @@ window.onload = () => {
         });
     }
 
+    // メインコンテンツ存在監視設定
+    function setupMainContentExistenceDetection() {
+        console.log('[StarRailExt] [ALL_CHAR_DEBUG] メインコンテンツ存在監視を設定');
+
+        // .pc-swiper-block-layout__content の親要素を監視
+        const parentContainer = document.querySelector('.pc-swiper-block-layout') || document.body;
+
+        mainContentExistenceObserver = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                if (mutation.type === 'childList') {
+                    // .pc-swiper-block-layout__content が新規追加されたかチェック
+                    const addedNodes = Array.from(mutation.addedNodes);
+                    const hasMainContent = addedNodes.some(node =>
+                        node.nodeType === Node.ELEMENT_NODE &&
+                        (node.matches(SELECTORS.MAIN_CONTENT) ||
+                         node.querySelector(SELECTORS.MAIN_CONTENT))
+                    );
+
+                    if (hasMainContent) {
+                        console.log('[StarRailExt] [ALL_CHAR_DEBUG] メインコンテンツ再構築検知 - 再初期化実行');
+                        // 完全再初期化
+                        isInitializing = true;
+                        firstDraw();
+                    }
+                }
+            }
+        });
+
+        mainContentExistenceObserver.observe(parentContainer, {
+            childList: true,
+            subtree: true
+        });
+    }
+
     setupLanguageChangeDetection(); // 言語変更検知
     setupBackButtonDetection();
+    setupMainContentExistenceDetection(); // メインコンテンツ存在監視
     firstDraw();
 };
