@@ -125,7 +125,6 @@ window.onload = () => {
                 if(characterNameElement){
                     const characterName = characterNameElement.textContent.trim();
                     if(characterName && characterName !== lastCharacterName){
-                        console.log('[StarRailExt] [ALL_CHAR_DEBUG] キャラ変更検知 - 旧:', lastCharacterName, '新:', characterName);
                         lastCharacterName = characterName;
                         reDraw();
                     }
@@ -151,7 +150,6 @@ window.onload = () => {
                 if(oldClassList.includes(className)
                     && !mutation.target.classList.contains(className)
                 ){
-                    console.log('[StarRailExt] [ALL_CHAR_DEBUG] カスタムサブステータス変更検知');
                     reDraw();
                 }
             }
@@ -163,13 +161,12 @@ window.onload = () => {
                 const oldClassString = mutation.oldValue || '';
                 const oldClassList = oldClassString.split(' ').filter(Boolean);
                 const className = config.MONITOR_CLASSES.PC_ROLE_LITE;
-                
+
                 // カスタムサブステータスを閉じたとき（=liteがなくなったとき）
                 if(oldClassList.includes(className)
                     && !mutation.target.classList.contains(className)
                     && mutation.target.classList.contains('pc-role-detail')
                 ){
-                    console.log('[StarRailExt] [ALL_CHAR_DEBUG] 簡略モード解除検知');
                     reDraw();
                 }
             }
@@ -296,9 +293,6 @@ window.onload = () => {
 
     // 描画
     function draw(){
-
-        console.log('[StarRailExt] [ALL_CHAR_DEBUG] draw() 開始 - characterInfoElement:', !!characterInfoElement);
-
         // 言語設定を最新に更新
         updateLanguageSettings();
 
@@ -427,13 +421,11 @@ window.onload = () => {
     // スコア要素作成
     async function firstDraw(){
         try {
-            console.log('[StarRailExt] [ALL_CHAR_DEBUG] firstDraw() 開始');
             await setup();
             draw();
             // 初期化完了後、少し待ってからObserverを有効化
             setTimeout(() => {
                 isInitializing = false;
-                console.log('[StarRailExt] [ALL_CHAR_DEBUG] 初期化完了');
             }, 100);
         } catch (error) {
             console.error('[StarRailExt]', currentUIStrings.LOG_ERROR_PREFIX, error);
@@ -442,10 +434,7 @@ window.onload = () => {
 
     // 言語変更後の再描画処理（最初のc-hrdr-itemが期待言語になるまで待機）
     async function handleLanguageChangeRedraw(fromLang, toLang) {
-
         try {
-            console.log('[StarRailExt] [ALL_CHAR_DEBUG] 言語変更検知:', fromLang, '→', toLang);
-
             // 現在のページが戦績画面かチェック
             if (!location.href.includes('/hsr')) {
                 return;
@@ -455,7 +444,7 @@ window.onload = () => {
             await waitForRelicItemLanguageChange();
 
             draw();
-            
+
         } catch (error) {
             console.error('[StarRailExt] 言語変更後の再描画エラー:', error);
         }
@@ -608,8 +597,6 @@ window.onload = () => {
                 return;
             }
 
-            console.log('[StarRailExt] [ALL_CHAR_DEBUG] SPAナビゲーション検知（戻る/進む/ハッシュ変更）');
-
             isRedrawing = true;
             isInitializing = true; // SPA遷移時も初期化状態に戻す
             try {
@@ -643,8 +630,6 @@ window.onload = () => {
 
     // メインコンテンツ存在監視設定
     function setupMainContentExistenceDetection() {
-        console.log('[StarRailExt] [ALL_CHAR_DEBUG] メインコンテンツ存在監視を設定');
-
         // .pc-swiper-block-layout__content の親要素を監視
         const parentContainer = document.querySelector('.pc-swiper-block-layout') || document.body;
 
@@ -674,7 +659,6 @@ window.onload = () => {
             if (hasMainContent) {
                 clearTimeout(mainContentChangeDebounceTimer);
                 mainContentChangeDebounceTimer = setTimeout(() => {
-                    console.log('[StarRailExt] [ALL_CHAR_DEBUG] メインコンテンツ再構築検知 - 再初期化実行');
                     // 完全再初期化
                     isInitializing = true;
                     firstDraw();
