@@ -8,7 +8,7 @@
     "manifest_version": 3,
     "name": "スターレイルスコア計算機",
     "short_name": "スコア計算機",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "web_accessible_resources": [{
         "resources": ["score-component.html"],
         "matches": ["https://act.hoyolab.com/*"]
