@@ -184,21 +184,21 @@ window.onload = () => {
             characterInfoElementObserver.disconnect();
         }
         characterInfoElementObserver = new MutationObserver(callback);
-        characterInfoElementObserver.observe(characterInfoElement, 
+        characterInfoElementObserver.observe(characterInfoElement,
             config.OBSERVER_OPTIONS.CHARACTER_INFO);
-        // カスタムサブステータス
+        // カスタムサブステータス（document.bodyを監視）
         if(bodyElementObserver){
             bodyElementObserver.disconnect();
         }
         bodyElementObserver = new MutationObserver(callback);
-        bodyElementObserver.observe(bodyElement, 
+        bodyElementObserver.observe(document.body,
             config.OBSERVER_OPTIONS.CUSTOM_SUBSTAT);
         // 簡略モード
         if(liteModeElementObserver){
             liteModeElementObserver.disconnect();
         }
         liteModeElementObserver = new MutationObserver(callback);
-        liteModeElementObserver.observe(bodyElement, 
+        liteModeElementObserver.observe(bodyElement,
             config.OBSERVER_OPTIONS.LITE_MODE);
     }
 
