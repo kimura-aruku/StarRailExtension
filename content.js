@@ -108,7 +108,8 @@ window.onload = () => {
 
     // デバウンス用のタイマー
     let characterChangeDebounceTimer;
-    
+    let mainContentChangeDebounceTimer;
+
     // 初期化状態の管理
     let isInitializing = true;
     
@@ -648,23 +649,36 @@ window.onload = () => {
         const parentContainer = document.querySelector('.pc-swiper-block-layout') || document.body;
 
         mainContentExistenceObserver = new MutationObserver((mutations) => {
+            // 初期化中は反応しない（フェイルセーフ）
+            if (isInitializing) {
+                return;
+            }
+
+            // メインコンテンツが追加されたかチェック
+            let hasMainContent = false;
             for (const mutation of mutations) {
                 if (mutation.type === 'childList') {
-                    // .pc-swiper-block-layout__content が新規追加されたかチェック
                     const addedNodes = Array.from(mutation.addedNodes);
-                    const hasMainContent = addedNodes.some(node =>
+                    if (addedNodes.some(node =>
                         node.nodeType === Node.ELEMENT_NODE &&
                         (node.matches(SELECTORS.MAIN_CONTENT) ||
                          node.querySelector(SELECTORS.MAIN_CONTENT))
-                    );
-
-                    if (hasMainContent) {
-                        console.log('[StarRailExt] [ALL_CHAR_DEBUG] メインコンテンツ再構築検知 - 再初期化実行');
-                        // 完全再初期化
-                        isInitializing = true;
-                        firstDraw();
+                    )) {
+                        hasMainContent = true;
+                        break;
                     }
                 }
+            }
+
+            // メインコンテンツが見つかった場合のみデバウンス処理
+            if (hasMainContent) {
+                clearTimeout(mainContentChangeDebounceTimer);
+                mainContentChangeDebounceTimer = setTimeout(() => {
+                    console.log('[StarRailExt] [ALL_CHAR_DEBUG] メインコンテンツ再構築検知 - 再初期化実行');
+                    // 完全再初期化
+                    isInitializing = true;
+                    firstDraw();
+                }, 50);
             }
         });
 
